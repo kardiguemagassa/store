@@ -1,16 +1,17 @@
 package com.store.store.controller;
 
+import com.store.store.dto.ErrorResponseDto;
 import com.store.store.dto.ProductDto;
 import com.store.store.entity.Product;
 import com.store.store.repository.ProductRepository;
 import com.store.store.service.IProductService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.WebRequest;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -20,8 +21,9 @@ public class ProductController {
     private final IProductService iProductService;
 
     @GetMapping
-    public List<ProductDto> getProducts() { // DTO Pattern
-        return iProductService.getProducts();
+    public ResponseEntity<List<ProductDto>> getProducts() {
+        List<ProductDto> productList = iProductService.getProducts();
+        return ResponseEntity.ok().body(productList);
     }
 
     @GetMapping("/{id}")
@@ -29,5 +31,14 @@ public class ProductController {
         return iProductService.getProductById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponseDto> handleGlobalException(Exception exception,
+                                                                  WebRequest webRequest) {
+        ErrorResponseDto errorResponseDto = new ErrorResponseDto(
+                webRequest.getDescription(false), HttpStatus.SERVICE_UNAVAILABLE,
+                exception.getMessage(), LocalDateTime.now());
+        return new ResponseEntity<>(errorResponseDto, HttpStatus.SERVICE_UNAVAILABLE);
     }
 }
