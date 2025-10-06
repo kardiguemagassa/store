@@ -2,16 +2,13 @@ package com.store.store.dto;
 
 import lombok.Getter;
 import lombok.Setter;
-import lombok.ToString;
 
-@Getter @Setter @ToString
-public class UserDto {
-
-    private Long userId;
+@Getter @Setter
+public class ProfileResponseDto {
+    private Long customerId;
     private String name;
     private String email;
     private String mobileNumber;
-    private String roles;
     private AddressDto address;
-
+    private boolean emailUpdated;
 }
