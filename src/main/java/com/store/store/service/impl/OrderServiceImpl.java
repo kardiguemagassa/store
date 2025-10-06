@@ -1,7 +1,9 @@
 package com.store.store.service.impl;
 
 import com.store.store.constants.ApplicationConstants;
+import com.store.store.dto.OrderItemReponseDto;
 import com.store.store.dto.OrderRequestDto;
+import com.store.store.dto.OrderResponseDto;
 import com.store.store.entity.Customer;
 import com.store.store.entity.Order;
 import com.store.store.entity.OrderItem;
@@ -49,5 +51,52 @@ public class OrderServiceImpl implements IOrderService {
         orderRepository.save(order);
 
     }
+
+    @Override
+    public List<OrderResponseDto> getCustomerOrders() {
+        Customer customer =profileService.getAuthenticatedCustomer();
+        List<Order> orders = orderRepository.findByCustomerOrderByCreatedAtDesc(customer);
+        return orders.stream().map(this::mapToOrderResponseDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<OrderResponseDto> getAllPendingOrders() {
+        List<Order> orders = orderRepository.findByOrderStatus(ApplicationConstants.ORDER_STATUS_CREATED);
+        return orders.stream().map(this::mapToOrderResponseDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    public Order updateOrderStatus(Long orderId, String orderStatus) {
+        Order order = orderRepository.findById(orderId).orElseThrow(
+                () -> new ResourceNotFoundException("Order", "OrderID", orderId.toString())
+        );
+        order.setOrderStatus(orderStatus);
+        return orderRepository.save(order);
+    }
+
+    /**
+     * Map Order entity to OrderResponseDto
+     */
+    private OrderResponseDto mapToOrderResponseDTO(Order order) {
+        // Map Order Items
+        List<OrderItemReponseDto> itemDTOs = order.getOrderItems().stream()
+                .map(this::mapToOrderItemResponseDTO)
+                .collect(Collectors.toList());
+        OrderResponseDto orderResponseDto = new OrderResponseDto(order.getOrderId()
+                , order.getOrderStatus(), order.getTotalPrice(), order.getCreatedAt().toString()
+                , itemDTOs);
+        return orderResponseDto;
+    }
+
+    /**
+     * Map OrderItem entity to OrderItemResponseDto
+     */
+    private OrderItemReponseDto mapToOrderItemResponseDTO(OrderItem orderItem) {
+        OrderItemReponseDto itemDTO = new OrderItemReponseDto(
+                orderItem.getProduct().getName(), orderItem.getQuantity(),
+                orderItem.getPrice(), orderItem.getProduct().getImageUrl());
+        return itemDTO;
+    }
+
 }
 

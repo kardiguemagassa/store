@@ -16,6 +16,7 @@ public class PublicPathConfig {
                 "/api/v1/auth/**",
                 "/error",
                 "/api/v1/csrf-token"
+                //"/eazystore/actuator/health/**"
         );
     };
 
