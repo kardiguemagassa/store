@@ -14,6 +14,8 @@ import com.store.store.repository.ProductRepository;
 import com.store.store.service.IOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -55,23 +57,25 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     public List<OrderResponseDto> getCustomerOrders() {
         Customer customer =profileService.getAuthenticatedCustomer();
-        List<Order> orders = orderRepository.findByCustomerOrderByCreatedAtDesc(customer);
+        //List<Order> orders = orderRepository.findByCustomerOrderByCreatedAtDesc(customer); //spring data
+        //List<Order> orders = orderRepository.findOrdersByCustomer(customer); // JPQL query
+        List<Order> orders = orderRepository.findOrdersByCustomerWithNativeQuery(customer.getCustomerId()); // Native query
         return orders.stream().map(this::mapToOrderResponseDTO).collect(Collectors.toList());
     }
 
     @Override
     public List<OrderResponseDto> getAllPendingOrders() {
-        List<Order> orders = orderRepository.findByOrderStatus(ApplicationConstants.ORDER_STATUS_CREATED);
+        //List<Order> orders = orderRepository.findByOrderStatus(ApplicationConstants.ORDER_STATUS_CREATED); // pring data
+        //List<Order> orders = orderRepository.findOrdersByStatus(ApplicationConstants.ORDER_STATUS_CREATED); // JPQL query
+        List<Order> orders = orderRepository.findOrdersByStatusWithNativeQuery(ApplicationConstants.ORDER_STATUS_CREATED);
         return orders.stream().map(this::mapToOrderResponseDTO).collect(Collectors.toList());
     }
 
     @Override
-    public Order updateOrderStatus(Long orderId, String orderStatus) {
-        Order order = orderRepository.findById(orderId).orElseThrow(
-                () -> new ResourceNotFoundException("Order", "OrderID", orderId.toString())
-        );
-        order.setOrderStatus(orderStatus);
-        return orderRepository.save(order);
+    public void updateOrderStatus(Long orderId, String orderStatus) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        orderRepository.updateOrderStatus(orderId,orderStatus,email);
     }
 
     /**
