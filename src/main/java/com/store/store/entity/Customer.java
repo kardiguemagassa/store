@@ -42,8 +42,12 @@ public class Customer extends BaseEntity {
     @OneToOne(mappedBy = "customer",cascade = CascadeType.ALL)
     private Address address;
 
-    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @JoinColumn(name = "customer_id", nullable = false)
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "customer_roles",
+            joinColumns = @JoinColumn(name = "customer_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
     private Set<Role> roles = new LinkedHashSet<>();
 
 }
