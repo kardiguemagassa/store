@@ -12,6 +12,7 @@
 	<artifactId>store</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>store</name>
+	<packaging>jar</packaging>
 	<description>Backend Project for Store E-commerce application</description>
 	<url/>
 	<licenses>
@@ -114,6 +115,15 @@
 			<groupId>com.stripe</groupId>
 			<artifactId>stripe-java</artifactId>
 			<version>30.0.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-cache</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
 		</dependency>
 
 	</dependencies>

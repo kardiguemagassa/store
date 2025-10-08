@@ -2,6 +2,7 @@ package com.store.store.security;
 
 import com.store.store.filter.JWTTokenValidatorFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -39,6 +40,9 @@ public class StoreSecurityConfig {
 
     private final List<String> publicPaths;
 
+    @Value("${store.cors.allowed-origins}")
+    private String allowedOrigins;
+
     @Bean
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http)
             throws Exception {
@@ -50,7 +54,7 @@ public class StoreSecurityConfig {
                             publicPaths.forEach(path ->
                                     requests.requestMatchers(path).permitAll());
                             requests.requestMatchers("/api/v1/admin/**").hasRole("ADMIN");
-                            requests.requestMatchers("/eazystore/actuator/**").hasRole("OPS_ENG");
+                            requests.requestMatchers("/store/actuator/**").hasRole("OPS_ENG");
                             requests.requestMatchers("/swagger-ui.html", "/swagger-ui/**",
                                     "/v3/api-docs/**").hasAnyRole("DEV_ENG","QA_ENG");
                             requests.anyRequest().hasAnyRole("USER", "ADMIN");
@@ -82,7 +86,7 @@ public class StoreSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
+        config.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
         config.setAllowedMethods(Collections.singletonList("*"));
         config.setAllowedHeaders(Collections.singletonList("*"));
         config.setAllowCredentials(true);
