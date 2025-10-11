@@ -1,6 +1,5 @@
 package com.store.store.controller;
 
-
 import com.store.store.dto.ContactInfoDto;
 import com.store.store.dto.ContactRequestDto;
 import com.store.store.service.IContactService;
@@ -22,8 +21,7 @@ public class ContactController {
     public ResponseEntity<String> saveContact(
             @Valid @RequestBody ContactRequestDto contactRequestDto) {
         iContactService.saveContact(contactRequestDto);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body("Request processed successfully");
+        return ResponseEntity.status(HttpStatus.CREATED).body("Demande traitée avec succès");
     }
 
     @GetMapping

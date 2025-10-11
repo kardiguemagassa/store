@@ -26,7 +26,6 @@ public class ProductServiceImpl implements IProductService {
                 .stream().map(this::transformToDTO).collect(Collectors.toList());
     }
 
-    // Ajoutez cette méthode
     @Override
     public Optional<ProductDto> getProductById(Long id) {
         return productRepository.findById(id)

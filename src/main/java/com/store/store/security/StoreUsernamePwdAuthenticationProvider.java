@@ -33,7 +33,7 @@ public class StoreUsernamePwdAuthenticationProvider implements AuthenticationPro
         String pwd = authentication.getCredentials().toString();
         Customer customer = customerRepository.findByEmail(username).orElseThrow(
                 () -> new UsernameNotFoundException(
-                        "User details not found for the user: " + username)
+                        "Les détails de l'utilisateur ne sont pas trouvés pour l'utilisateur: " + username)
         );
         Set<Role> roles = customer.getRoles();
         List<SimpleGrantedAuthority> authorities = roles.stream()
@@ -43,7 +43,7 @@ public class StoreUsernamePwdAuthenticationProvider implements AuthenticationPro
             return new UsernamePasswordAuthenticationToken(customer,null,
                     authorities);
         } else {
-            throw new BadCredentialsException("Invalid password!");
+            throw new BadCredentialsException("Mot de passe invalide!");
         }
     }
 

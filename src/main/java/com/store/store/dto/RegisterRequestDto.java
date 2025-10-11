@@ -8,19 +8,19 @@ import lombok.Data;
 
 @Data
 public class RegisterRequestDto {
-    @NotBlank(message = "Name is required")
-    @Size(min = 5, max = 30, message = "The length of the name should be between 5 and 100 characters")
+    @NotBlank(message = "Nom est obligatore")
+    @Size(min = 2, max = 30, message = "La longueur du nom doit être comprise entre 2 et 100 caractères")
     private String name;
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Email address must be a valid value")
+    @NotBlank(message = "Email est obligatore")
+    @Email(message = "L'adresse e-mail doit être une valeur valide")
     private String email;
 
-    @NotBlank(message = "Mobile Number is required")
-    @Pattern(regexp = "^\\d{10}$", message = "Mobile number must be exactly 10 digits")
+    @NotBlank(message = "Le numéro de téléphone portable est obligatore")
+    @Pattern(regexp = "^\\d{10}$", message = "Le numéro de téléphone portable doit comporter exactement 10 chiffres")
     private String mobileNumber;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 8, max = 20, message = "Password length must be between 8 and 50 characters")
+    @NotBlank(message = "Le mot de passe est requis")
+    @Size(min = 8, max = 20, message = "Le mot de passe doit contenir entre 8 et 50 caractères")
     private String password;
 }

@@ -19,10 +19,7 @@ import org.springframework.security.authentication.password.CompromisedPasswordD
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -66,13 +63,13 @@ public class AuthController {
                             userDto, jwtToken));
         } catch (BadCredentialsException ex) {
             return buildErrorResponse(HttpStatus.UNAUTHORIZED,
-                    "Invalid username or password");
+                    "Nom d'utilisateur ou mot de passe invalide");
         } catch (AuthenticationException ex) {
             return buildErrorResponse(HttpStatus.UNAUTHORIZED,
-                    "Authentication failed");
+                    "L'authentification a échoué");
         } catch (Exception ex) {
             return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "An unexpected error occurred");
+                    "Une erreur inattendue s'est produite");
         }
     }
 
@@ -83,7 +80,7 @@ public class AuthController {
         if(decision.isCompromised()) {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("password", "Choose a strong password"));
+                    .body(Map.of("password", "Choisissez un mot de passe fort"));
         }
         Optional<Customer> existingCustomer =  customerRepository.findByEmailOrMobileNumber
                 (registerRequestDto.getEmail(),registerRequestDto.getMobileNumber());
@@ -92,10 +89,10 @@ public class AuthController {
             Customer customer = existingCustomer.get();
 
             if (customer.getEmail().equalsIgnoreCase(registerRequestDto.getEmail())) {
-                errors.put("email", "Email is already registered");
+                errors.put("email", "L'e-mail est déjà enregistré");
             }
             if (customer.getMobileNumber().equals(registerRequestDto.getMobileNumber())) {
-                errors.put("mobileNumber", "Mobile number is already registered");
+                errors.put("mobileNumber", "Le numéro de téléphone portable est déjà enregistré");
             }
 
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
@@ -107,7 +104,7 @@ public class AuthController {
         customerRepository.save(customer);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body("Registration successful");
+                .body("Inscription réussie");
     }
 
     private ResponseEntity<LoginResponseDto> buildErrorResponse(HttpStatus status,
@@ -116,6 +113,5 @@ public class AuthController {
                 .status(status)
                 .body(new LoginResponseDto(message, null, null));
     }
-
 
 }

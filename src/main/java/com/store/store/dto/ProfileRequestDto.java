@@ -11,36 +11,36 @@ import lombok.Setter;
 @Setter
 public class ProfileRequestDto {
 
-    @NotBlank(message = "Name is required")
-    @Size(min = 5, max = 30, message = "The length of the name should be between 5 and 100 characters")
+    @NotBlank(message = "Le nom est obligatoire")
+    @Size(min = 2, max = 30, message = "Le nom doit être compris entre 2 et 100 caractères")
     private String name;
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Email address must be a valid value")
+    @NotBlank(message = "Email is obligatoire")
+    @Email(message = "L'adresse e-mail doit être une valeur valide")
     private String email;
 
-    @NotBlank(message = "Mobile Number cannot be empty")
-    @Pattern(regexp = "^\\d{10}$", message = "Mobile number must be 10 digits")
+    @NotBlank(message = "Le numéro de téléphone portable ne peut pas être vide")
+    @Pattern(regexp = "^\\d{10}$", message = "Le numéro de téléphone portable doit comporter 10 chiffres")
     private String mobileNumber;
 
-    @NotBlank(message = "Street is required")
-    @Size(min = 5, max = 50, message = "The length of the street should be between 5 and 50 characters")
+    @NotBlank(message = "La rue est obligatoire")
+    @Size(min = 5, max = 50, message = "Le nom de la rue doit être compris entre 5 et 50 caractères")
     private String street;
 
-    @NotBlank(message = "City is required")
-    @Size(min = 3, max = 30, message = "The length of the city should be between 3 and 30 characters")
+    @NotBlank(message = "La ville est obligatoire")
+    @Size(min = 3, max = 30, message = "Le nom de la ville doit être compris entre 3 et 30 caractères")
     private String city;
 
-    @NotBlank(message = "State is required")
-    @Size(min = 2, max = 30, message = "The length of the state should be between 2 and 30 characters")
+    @NotBlank(message = "Le département est obligatoire")
+    @Size(min = 2, max = 30, message = "Le nom du département doit être compris entre 2 et 30 caractères")
     private String state;
 
-    @NotBlank(message = "Postal Code is required")
-    @Pattern(regexp = "^\\d{5}$", message = "Postal code must be exactly 5 digits")
+    @NotBlank(message = "Le code postal est obligatoire")
+    @Pattern(regexp = "^\\d{5}$", message = "Le code postal doit comporter exactement 5 chiffres")
     private String postalCode;
 
-    @NotBlank(message = "Country is required")
-    @Size(min = 2, max = 2, message = "The length of the country should be exactly 2 characters")
+    @NotBlank(message = "Le pays est obligatoire")
+    @Size(min = 2, max = 2, message = "La nom du pays doit être exactement de 2 caractères")
     private String country;
 
 }

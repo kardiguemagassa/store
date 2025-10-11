@@ -23,7 +23,7 @@ public class PaymentServiceImpl implements IPaymentService {
             PaymentIntent paymentIntent = PaymentIntent.create(params);
             return new PaymentIntentResponseDto(paymentIntent.getClientSecret());
         } catch (StripeException e) {
-            throw new RuntimeException("Failed to create payment intent", e);
+            throw new RuntimeException("Échec de paiement", e);
         }
 
     }
