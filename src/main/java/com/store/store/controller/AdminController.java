@@ -4,7 +4,6 @@ import com.store.store.constants.ApplicationConstants;
 import com.store.store.dto.ContactResponseDto;
 import com.store.store.dto.OrderResponseDto;
 import com.store.store.dto.ResponseDto;
-import com.store.store.entity.Order;
 import com.store.store.service.IContactService;
 import com.store.store.service.IOrderService;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +29,7 @@ public class AdminController {
     public ResponseEntity<ResponseDto> confirmOrder(@PathVariable Long orderId) {
         iOrderService.updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CONFIRMED);
         return ResponseEntity.ok(
-                new ResponseDto("200", "Order #" + orderId + " has been approved.")
+                new ResponseDto("200", "Commande #" + orderId + " a été approuvé.")
         );
     }
 
@@ -38,7 +37,7 @@ public class AdminController {
     public ResponseEntity<ResponseDto> cancelOrder(@PathVariable Long orderId) {
         iOrderService.updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CANCELLED);
         return ResponseEntity.ok(
-                new ResponseDto("200", "Order #" + orderId + " has been cancelled.")
+                new ResponseDto("200", "Commande #" + orderId + " a été annulé.")
         );
     }
 
@@ -51,7 +50,7 @@ public class AdminController {
     public ResponseEntity<ResponseDto> closeMessage(@PathVariable Long contactId) {
         iContactService.updateMessageStatus(contactId, ApplicationConstants.CLOSED_MESSAGE);
         return ResponseEntity.ok(
-                new ResponseDto("200", "Contact #" + contactId + " has been closed.")
+                new ResponseDto("200", "Contact #" + contactId + " a été fermé.")
         );
     }
 

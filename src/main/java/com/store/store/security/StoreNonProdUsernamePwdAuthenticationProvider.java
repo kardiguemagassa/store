@@ -31,7 +31,7 @@ public class StoreNonProdUsernamePwdAuthenticationProvider implements Authentica
         String pwd = authentication.getCredentials().toString();
         Customer customer = customerRepository.findByEmail(username).orElseThrow(
                 () -> new UsernameNotFoundException(
-                        "User details not found for the user: " + username)
+                        "Les détails de l'utilisateur ne sont pas trouvés pour l'utilisateur: " + username)
         );
         Set<Role> roles = customer.getRoles();
         List<SimpleGrantedAuthority> authorities = roles.stream()
