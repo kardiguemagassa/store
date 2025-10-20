@@ -3,6 +3,7 @@ package com.store.store.controller;
 import com.store.store.dto.PaymentIntentRequestDto;
 import com.store.store.dto.PaymentIntentResponseDto;
 import com.store.store.service.IPaymentService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,7 +20,7 @@ public class PaymentController {
 
     @PostMapping("/create-payment-intent")
     public ResponseEntity<PaymentIntentResponseDto> createPaymentIntent(
-            @RequestBody PaymentIntentRequestDto paymentRequest) {
+            @Valid @RequestBody PaymentIntentRequestDto paymentRequest) {
         PaymentIntentResponseDto response =
                 iPaymentService.createPaymentIntent(paymentRequest);
         return ResponseEntity.ok(response);
