@@ -1,4 +1,9 @@
 package com.store.store.dto;
 
-public record PaymentIntentResponseDto(String clientSecret) {
-}
+import jakarta.validation.constraints.NotBlank;
+
+
+public record PaymentIntentResponseDto(
+        @NotBlank(message = "Le client secret ne peut pas être vide")
+        String clientSecret
+) {}
