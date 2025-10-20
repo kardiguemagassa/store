@@ -34,9 +34,18 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query(value = "SELECT * FROM orders o WHERE o.order_status=?1", nativeQuery = true)
     List<Order> findOrdersByStatusWithNativeQuery(String orderStatus);
 
-    @Transactional
+    /*@Transactional
     @Modifying
     @Query("UPDATE Order o SET o.orderStatus=:orderStatus,o.updatedAt=CURRENT_TIMESTAMP,o.updatedBy=:updatedBy WHERE o.orderId=:orderId")
     int updateOrderStatus(@Param("orderId") Long orderId, @Param("orderStatus") String orderStatus,
-                          @Param("updatedBy") String updatedBy);
+                          @Param("updatedBy") String updatedBy);*/
+
+
+    /*// SOLUTION : Supprimez CURRENT_TIMESTAMP de la requête
+    @Transactional
+    @Modifying
+    @Query("UPDATE Order o SET o.orderStatus = :orderStatus, o.updatedBy = :updatedBy WHERE o.orderId = :orderId")
+    int updateOrderStatus(@Param("orderId") Long orderId,
+                          @Param("orderStatus") String orderStatus,
+                          @Param("updatedBy") String updatedBy);*/
 }
