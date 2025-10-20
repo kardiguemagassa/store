@@ -1,7 +1,6 @@
 package com.store.store.service;
 
 import com.store.store.dto.ProductDto;
-import com.store.store.entity.Product;
 
 import java.util.List;
 import java.util.Optional;
