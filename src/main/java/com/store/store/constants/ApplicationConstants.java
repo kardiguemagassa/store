@@ -12,6 +12,8 @@ public class ApplicationConstants {
 
     public static final String  ORDER_STATUS_CONFIRMED = "CONFIRMÉ";
     public static final String  ORDER_STATUS_CREATED = "CRÉÉ";
+    public static final String ORDER_STATUS_SHIPPED = "EXPÉDIÉE";
+    public static final String ORDER_STATUS_DELIVERED = "LIVRÉ";
     public static final String  ORDER_STATUS_CANCELLED = "ANNULÉ";
     public static final String ORDER_STATUS_PENDING = "EN ATTENTE";
 
