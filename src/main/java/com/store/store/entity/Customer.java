@@ -2,6 +2,7 @@ package com.store.store.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -26,12 +27,15 @@ public class Customer extends BaseEntity {
 
     @Size(max = 100)
     @NotNull
-    @Column(name = "email", nullable = false, length = 100)
+    @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
 
-    @Size(max = 15)
-    @NotNull
-    @Column(name = "mobile_number", nullable = false, length = 15)
+    @Size(min = 7, max = 20, message = "Le numéro de téléphone doit contenir entre 7 et 20 caractères")
+    @Pattern(
+            regexp = "^\\+?[0-9]{7,15}$",  // Plus flexible : + optionnel, puis 7-15 chiffres
+            message = "Format de numéro de téléphone invalide"
+    )
+    @Column(name = "mobile_number", nullable = false, unique = true, length = 20)
     private String mobileNumber;
 
     @Size(max = 500)

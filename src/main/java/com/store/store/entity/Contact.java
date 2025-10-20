@@ -1,11 +1,9 @@
 package com.store.store.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
-
-import java.time.Instant;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.*;
 
 @Getter
 @Setter
@@ -28,7 +26,9 @@ public class Contact extends BaseEntity {
     @Column(name = "email", nullable = false, length = 100)
     private String email;
 
-    @Column(name = "mobile_number", nullable = false, length = 15)
+    @Size(min = 7, max = 20, message = "Le numéro de téléphone doit contenir entre 7 et 20 caractères")
+    @Pattern(regexp = "^\\+?[0-9]{7,15}$", message = "Format de numéro de téléphone invalide")
+    @Column(name = "mobile_number", nullable = false, length = 20)
     private String mobileNumber;
 
     @Column(name = "message", nullable = false, length = 500)
