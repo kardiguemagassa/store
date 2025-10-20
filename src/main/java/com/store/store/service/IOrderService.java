@@ -2,7 +2,6 @@ package com.store.store.service;
 
 import com.store.store.dto.OrderRequestDto;
 import com.store.store.dto.OrderResponseDto;
-import com.store.store.entity.Order;
 
 import java.util.List;
 

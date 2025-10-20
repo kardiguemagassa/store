@@ -13,9 +13,8 @@ import com.store.store.repository.OrderRepository;
 import com.store.store.repository.ProductRepository;
 import com.store.store.service.IOrderService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,6 +22,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderServiceImpl implements IOrderService {
 
     private final OrderRepository orderRepository;
@@ -71,12 +71,35 @@ public class OrderServiceImpl implements IOrderService {
         return orders.stream().map(this::mapToOrderResponseDTO).collect(Collectors.toList());
     }
 
-    @Override
+    /*@Override
     public void updateOrderStatus(Long orderId, String orderStatus) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
         orderRepository.updateOrderStatus(orderId,orderStatus,email);
+    }*/
+
+    @Override
+    public void updateOrderStatus(Long orderId, String newStatus) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+
+        order.setOrderStatus(newStatus);
+        // updatedAt et updatedBy sont automatiquement gérés par BaseEntity
+
+        orderRepository.save(order);
+
+        log.info("Order {} status updated to {}", orderId, newStatus);
     }
+
+    /*@Override
+    public void updateOrderStatus(Long orderId, String newStatus) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order", "OrderID", orderId.toString()));  // Correction
+
+        order.setOrderStatus(newStatus);
+        orderRepository.save(order);
+        log.info("Order {} status updated to {}", orderId, newStatus);
+    }*/
 
     /**
      * Map Order entity to OrderResponseDto
