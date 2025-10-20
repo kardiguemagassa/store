@@ -2,8 +2,6 @@ package com.store.store.controller;
 
 import com.store.store.dto.ErrorResponseDto;
 import com.store.store.dto.ProductDto;
-import com.store.store.entity.Product;
-import com.store.store.repository.ProductRepository;
 import com.store.store.service.IProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

@@ -2,7 +2,6 @@ package com.store.store.controller;
 
 import com.store.store.dto.LoggingResponseDto;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,8 +11,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/logging")
 @Slf4j
 public class LoggingController {
-
-    // private static final Logger log = LoggerFactory.getLogger(LoggingController.class);
 
     @GetMapping
     public ResponseEntity<LoggingResponseDto> testLogging() {
