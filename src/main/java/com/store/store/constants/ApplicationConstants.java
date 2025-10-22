@@ -20,5 +20,9 @@ public class ApplicationConstants {
 
     public static final String  OPEN_MESSAGE = "OUVRIR";
     public static final String  CLOSED_MESSAGE = "FERMÉ";
+
+    // Contact Status
+    public static final String IN_PROGRESS_MESSAGE = "IN_PROGRESS";
+
 }
 
