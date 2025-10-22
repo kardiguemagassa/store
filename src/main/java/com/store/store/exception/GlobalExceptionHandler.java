@@ -1,206 +1,267 @@
 package com.store.store.exception;
 
+import com.store.store.constants.ErrorCodes;
 import com.store.store.dto.ErrorResponseDto;
-import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
-import org.springframework.web.servlet.resource.NoResourceFoundException;
-
-import org.springframework.web.HttpRequestMethodNotSupportedException;
-import org.springframework.web.HttpMediaTypeNotSupportedException;
-import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
-    //EXCEPTIONS MÉTIER INTERCEPTER
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponseDto> handleGlobalException(Exception exception,
-                                                                  WebRequest webRequest) {
-        log.error("Technical error : {}", exception.getMessage(), exception);
+    private final MessageSource messageSource;
 
-        ErrorResponseDto errorResponseDto = new ErrorResponseDto(
-                webRequest.getDescription(false),
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "Une erreur technique s'est produite. Notre équipe a été alertée.",
-                LocalDateTime.now());
-        return new ResponseEntity<>(errorResponseDto, HttpStatus.INTERNAL_SERVER_ERROR);
+    public GlobalExceptionHandler(MessageSource messageSource) {
+        this.messageSource = messageSource;
     }
 
+    // Gestion centralisée avec factory methods
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidationExceptions(
-            MethodArgumentNotValidException exception) {
-        log.warn("Invalid data submitted");
+    public ResponseEntity<ErrorResponseDto> handleValidationExceptions(
+            MethodArgumentNotValidException exception, WebRequest webRequest) {
 
-        Map<String, String> fieldErrors = new HashMap<>();
-        List<FieldError> fieldErrorList = exception.getBindingResult().getFieldErrors();
+        log.warn("Validation error for request: {}", extractPath(webRequest));
 
-        fieldErrorList.forEach(error -> {
-            String fieldName = getFieldNameForUser(error.getField());
-            fieldErrors.put(fieldName, error.getDefaultMessage());
-        });
+        Map<String, String> errors = exception.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .collect(Collectors.toMap(FieldError::getField, this::getEnhancedValidationMessage)); // Utilise vos messages.properties
 
-        // propriété "errors"
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.BAD_REQUEST.value());
-        response.put("error", "Bad Request");
-        response.put("message", "Erreur de validation des données");
-        response.put("errors", fieldErrors);
+        //UTILISATION factory method
+        ErrorResponseDto errorResponse = ErrorResponseDto.badRequest(
+                ErrorCodes.VALIDATION_ERROR,
+                getLocalizedMessage("validation.error.message"), //Message externalisé
+                extractPath(webRequest),
+                errors
 
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        );
+
+        return ResponseEntity.badRequest().body(errorResponse);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<Map<String, String>> handleConstraintViolationException(
-            ConstraintViolationException exception) {
-        log.warn("Violation of validation constraints");
+    public ResponseEntity<ErrorResponseDto> handleConstraintViolation(
+            ConstraintViolationException exception, WebRequest webRequest) {
 
-        Map<String, String> errors = new HashMap<>();
-        Set<ConstraintViolation<?>> constraintViolationSet = exception.getConstraintViolations();
+        log.warn("Constraint violation for request: {}", extractPath(webRequest));
 
-        constraintViolationSet.forEach(constraintViolation -> {
-            String fieldName = getFieldNameForUser(
-                    extractFieldName(constraintViolation.getPropertyPath().toString())
-            );
-            errors.put(fieldName, constraintViolation.getMessage());
-        });
+        Map<String, String> errors = exception.getConstraintViolations()
+                .stream()
+                .collect(Collectors.toMap(
+                        violation -> extractFieldName(violation.getPropertyPath().toString()),
+                        violation -> {
+                            String fieldName = extractFieldName(violation.getPropertyPath().toString());
+                            String fieldLabel = getFieldLabel(fieldName);
+                            return String.format("%s : %s", fieldLabel, violation.getMessage());
+                        }
+                ));
 
-        return ResponseEntity.badRequest().body(errors);
+        return ResponseEntity.badRequest().body(
+                ErrorResponseDto.badRequest(
+                        ErrorCodes.CONSTRAINT_VIOLATION,
+                        getLocalizedMessage("validation.constraint.violation"),
+                        extractPath(webRequest),
+                        errors
+                )
+        );
+    }
+
+    //Gestion des type mismatch
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponseDto> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException exception, WebRequest webRequest) {
+
+        log.warn("Type mismatch for parameter: {} - Path: {}",
+                exception.getName(), extractPath(webRequest));
+
+        String fieldLabel = getFieldLabel(exception.getName());
+        String expectedType = exception.getRequiredType() != null ?
+                exception.getRequiredType().getSimpleName() : "valide";
+
+        // Utilisation d'un message externalisé et spécifique
+        String errorMessage = getLocalizedMessage("validation.type.mismatch",
+                fieldLabel, expectedType);
+
+        return ResponseEntity.badRequest().body(
+                ErrorResponseDto.badRequest(
+                        ErrorCodes.TYPE_MISMATCH,  // Code d'erreur spécifique
+                        errorMessage,           // Message spécifique utilisé
+                        extractPath(webRequest)
+                )
+        );
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponseDto> handleResourceNotFoundException(ResourceNotFoundException exception,
-                                                                            WebRequest webRequest){
-        log.warn("Resource not found : {}", exception.getMessage());
+    public ResponseEntity<ErrorResponseDto> handleResourceNotFound(
+            ResourceNotFoundException exception, WebRequest webRequest) {
 
-        ErrorResponseDto errorResponseDTO = new ErrorResponseDto(
-                webRequest.getDescription(false),
-                HttpStatus.NOT_FOUND,
-                "La ressource demandée n'a pas été trouvée.",
-                LocalDateTime.now()
-        );
-        return new ResponseEntity<>(errorResponseDTO, HttpStatus.NOT_FOUND);
-    }
+        log.warn("Resource not found: {} - Path: {}", exception.getMessage(), extractPath(webRequest));
 
-    @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<ErrorResponseDto> handleNoResourceFoundException(NoResourceFoundException exception,
-                                                                           WebRequest webRequest) {
-        log.warn("Non-existent URL accessed: {}", exception.getResourcePath());
+        ErrorResponseDto errorResponse = ErrorResponseDto.notFound(
+                ErrorCodes.RESOURCE_NOT_FOUND,                  // Code métier
+                exception.getMessage(),
+                extractPath(webRequest));
 
-        String errorMessage = "Désolé, la page que vous recherchez n'existe pas. " +
-                "Retournez à la page d'accueil.";
 
-        ErrorResponseDto errorResponseDTO = new ErrorResponseDto(
-                webRequest.getDescription(false),
-                HttpStatus.NOT_FOUND,
-                errorMessage,
-                LocalDateTime.now()
-        );
-        return new ResponseEntity<>(errorResponseDTO, HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>(errorResponse,HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponseDto> handleAccessDeniedException(AccessDeniedException exception,
-                                                                        WebRequest webRequest) {
-        log.warn("Access denied : {}", exception.getMessage());
+    public ResponseEntity<ErrorResponseDto> handleAccessDenied(
+            AccessDeniedException exception, WebRequest webRequest) {
 
-        ErrorResponseDto errorResponseDTO = new ErrorResponseDto(
-                webRequest.getDescription(false),
-                HttpStatus.FORBIDDEN,
-                "Accès refusé. Vous n'avez pas les permissions nécessaires pour accéder à cette ressource.",
-                LocalDateTime.now()
+        log.warn("Access denied for path: {} - User: {}", extractPath(webRequest), exception.getMessage());
+
+        ErrorResponseDto errorResponse = ErrorResponseDto.forbidden(
+               ErrorCodes.ACCESS_DENIED,
+                exception.getMessage(),
+                extractPath(webRequest));
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
+
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ErrorResponseDto> handleBusinessException(BusinessException exception, WebRequest webRequest) {
+
+        log.warn("Business rule violation: {}", exception.getMessage());
+
+        ErrorResponseDto errorResponse = ErrorResponseDto.badRequest(
+                ErrorCodes.BUSINESS_RULE_VIOLATION,
+                exception.getMessage(),
+                extractPath(webRequest));
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ErrorResponseDto> handleValidationException(
+            ValidationException exception, WebRequest webRequest) {
+
+        log.warn("Business validation error: {}", exception.getMessage());
+
+        ErrorResponseDto errorResponse = ErrorResponseDto.badRequest(
+                ErrorCodes.VALIDATION_ERROR,
+                exception.getMessage(),
+                extractPath(webRequest),
+                exception.getErrors());
+
+        return ResponseEntity.badRequest().body(errorResponse);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponseDto> handleGlobalException(
+            Exception exception, WebRequest webRequest) {
+
+        String path = extractPath(webRequest);
+        String traceId = generateTraceId();
+
+        log.error("Unexpected error at path: {} - TraceId: {} - Error: {}",
+                path, traceId, exception.getMessage(), exception);
+
+        ErrorResponseDto errorResponse = ErrorResponseDto.internalServerError(
+                ErrorCodes.INTERNAL_ERROR,
+                getLocalizedMessage("error.internal.server"),
+                path,
+                traceId
         );
-        return new ResponseEntity<>(errorResponseDTO, HttpStatus.FORBIDDEN);
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    //EXCEPTIONS HTTP STANDARDS NE PAS INTERCEPTER Spring retourner le code HTTP approprié
-    /**
-     * Ne pas intercepter HttpRequestMethodNotSupportedException (405)
-     * Spring retourner le code HTTP approprié
-     */
-    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public void handleHttpRequestMethodNotSupportedException(HttpRequestMethodNotSupportedException ex) throws Exception {
-        throw ex;
-    }
-
-    /**
-     * Ne pas intercepter HttpMediaTypeNotSupportedException (415)
-     * Spring retourner le code HTTP approprié
-     */
-    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
-    public void handleHttpMediaTypeNotSupportedException(HttpMediaTypeNotSupportedException ex) throws Exception {
-        throw ex;
-    }
-
-    /**
-     * Ne pas intercepter MissingServletRequestParameterException (400)
-     * Spring retourner le code HTTP approprié
-     */
-    @ExceptionHandler(MissingServletRequestParameterException.class)
-    public void handleMissingServletRequestParameterException(MissingServletRequestParameterException ex) throws Exception {
-        throw ex;
-    }
-
-    /**
-     * Ne pas intercepter MethodArgumentTypeMismatchException (400)
-     * Spring retourner le code HTTP approprié
-     */
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public void handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException ex) throws Exception {
-        throw ex;
-    }
-
-    /**
-     * Ne pas intercepter HttpMessageNotReadableException (400)
-     * Spring retourner le code HTTP approprié pour les body invalides
-     */
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public void handleHttpMessageNotReadableException(HttpMessageNotReadableException ex) throws Exception {
-        throw ex;
-    }
-
-    // Utility Method All your DTOs
-    private String getFieldNameForUser(String technicalFieldName) {
-        Map<String, String> fieldMappings = Map.of(
-                // ProfileRequestDto
-                "name", "Nom",
-                "email", "Adresse email",
-                "mobileNumber", "Numéro de mobile",
-                "street", "Rue",
-                "city", "Ville",
-                "state", "Département",
-                "postalCode", "Code postal",
-                "country", "Pays",
-
-                // RegisterRequestDto
-                "password", "Mot de passe",
-
-                // ContactRequestDto
-                "message", "Message"
-        );
-        return fieldMappings.getOrDefault(technicalFieldName, technicalFieldName);
+    // Méthodes utilitaires
+    private String extractPath(WebRequest webRequest) {
+        if (webRequest.getDescription(false).startsWith("uri=")) {
+            return webRequest.getDescription(false).substring(4);
+        }
+        return webRequest.getDescription(false);
     }
 
     private String extractFieldName(String propertyPath) {
         String[] parts = propertyPath.split("\\.");
         return parts.length > 0 ? parts[parts.length - 1] : propertyPath;
+    }
+
+    private String getUserFriendlyMessage(FieldError fieldError) {
+        try {
+            return messageSource.getMessage(fieldError, Locale.getDefault());
+        } catch (Exception e) {
+            return fieldError.getDefaultMessage() != null ?
+                    fieldError.getDefaultMessage() : "Erreur de validation";
+        }
+    }
+
+    private String generateTraceId() {
+        return java.util.UUID.randomUUID().toString();
+    }
+
+    // Nouvelle méthode améliorée
+    private String getEnhancedValidationMessage(FieldError fieldError) {
+        String fieldLabel = getFieldLabel(fieldError.getField());
+        String errorCode = fieldError.getCode();
+
+        switch (errorCode) {
+            case "NotBlank":
+            case "NotNull":
+            case "NotEmpty":
+                return getLocalizedMessage("validation.required", fieldLabel);
+
+            case "Size":
+                Object[] args = fieldError.getArguments();
+                if (args != null && args.length >= 2) {
+                    Integer max = (Integer) args[1];
+                    Integer min = (Integer) args[2];
+                    return getLocalizedMessage("validation.size.min.max", fieldLabel, max, min);
+                }
+                break;
+
+            case "Email":
+                return getLocalizedMessage("validation.email", fieldLabel);
+
+            case "Pattern":
+                // Messages spécifiques par champ pour les patterns
+                if ("mobileNumber".equals(fieldError.getField())) {
+                    return getLocalizedMessage("validation.mobileNumber.pattern");
+                }
+                return getLocalizedMessage("validation.pattern", fieldLabel);
+
+            case "Min":
+                Object[] minArgs = fieldError.getArguments();
+                if (minArgs != null && minArgs.length >= 1) {
+                    return getLocalizedMessage("validation.min.value", fieldLabel, minArgs[0]);
+                }
+                break;
+        }
+
+        // Fallback au message par défaut
+        try {
+            return messageSource.getMessage(fieldError, Locale.getDefault());
+        } catch (Exception e) {
+            return fieldError.getDefaultMessage() != null ?
+                    fieldError.getDefaultMessage() : "Erreur de validation";
+        }
+    }
+
+    private String getFieldLabel(String fieldName) {
+        return messageSource.getMessage("field." + fieldName, null, fieldName, Locale.getDefault());
+    }
+
+    private String getLocalizedMessage(String code, Object... args) {
+        // Utilisation de la localisation dynamique
+        return messageSource.getMessage(code, args, code, Locale.getDefault());
     }
 }
