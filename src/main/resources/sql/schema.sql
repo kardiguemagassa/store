@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS products
 (
     product_id  BIGINT AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(250)                          NOT NULL,
+    category    VARCHAR(100)                          NOT NULL;
     description VARCHAR(500)                          NOT NULL,
     price       DECIMAL(10, 2)                        NOT NULL,
     popularity  INT                                   NOT NULL,
