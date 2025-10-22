@@ -33,9 +33,9 @@ import java.util.stream.Collectors;
  * Contrôleur REST pour gérer l'authentification et l'inscription des utilisateurs.
  * Fournit des endpoints pour le login et le register avec JWT.
  *
- * @author Votre Nom
+ * @author Kardigué
  * @version 1.0
- * @since 2025-01-01
+ * @since 20-10-2025
  */
 @Slf4j
 @RestController
