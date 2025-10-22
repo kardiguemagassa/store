@@ -1,9 +1,9 @@
-/*package com.store.store.repository;
+package com.store.store.repository;
 
 import com.store.store.constants.ApplicationConstants;
 import com.store.store.entity.Contact;
-import com.store.store.repository.ContactRepository;
 import com.store.store.util.TestDataBuilder;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,219 +11,392 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Tests d'intégration pour ContactRepository
+ * Teste les opérations CRUD et les requêtes personnalisées
+ */
 @DataJpaTest
 @ActiveProfiles("test")
-@DisplayName("Tests du Repository - ContactRepository")
+@DisplayName("Tests du ContactRepository")
 class ContactRepositoryTest {
-
-    @Autowired
-    private TestEntityManager entityManager;
 
     @Autowired
     private ContactRepository contactRepository;
 
+    @Autowired
+    private TestEntityManager entityManager;
+
+    @BeforeEach
+    void setUp() {
+        contactRepository.deleteAll();
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    // ==================== TESTS CRUD DE BASE ====================
+
     @Test
-    @DisplayName("findByStatus - Devrait retourner les contacts avec le statut spécifié")
-    void findByStatus_ShouldReturnContactsWithGivenStatus() {
-        // Arrange
-        Contact contact1 = createAndPersistContact("John Doe", "john@example.com", ApplicationConstants.OPEN_MESSAGE);
-        Contact contact2 = createAndPersistContact("Jane Smith", "jane@example.com", ApplicationConstants.OPEN_MESSAGE);
-        Contact contact3 = createAndPersistContact("Bob Wilson", "bob@example.com", ApplicationConstants.CLOSED_MESSAGE);
+    @DisplayName("Devrait sauvegarder un contact avec succès")
+    void shouldSaveContact() {
+        // Given
+        Contact contact = TestDataBuilder.createContact(null, "John Doe", "john@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
 
-        // Act
-        List<Contact> openContacts = contactRepository.findByStatus(ApplicationConstants.OPEN_MESSAGE);
-        List<Contact> closedContacts = contactRepository.findByStatus(ApplicationConstants.CLOSED_MESSAGE);
+        // When
+        Contact savedContact = contactRepository.save(contact);
 
-        // Assert
-        assertThat(openContacts).hasSize(2);
-        assertThat(openContacts).extracting(Contact::getContactId)
-                .containsExactlyInAnyOrder(contact1.getContactId(), contact2.getContactId());
-
-        assertThat(closedContacts).hasSize(1);
-        assertThat(closedContacts.get(0).getContactId()).isEqualTo(contact3.getContactId());
+        // Then
+        assertThat(savedContact).isNotNull();
+        assertThat(savedContact.getContactId()).isNotNull();
+        assertThat(savedContact.getName()).isEqualTo("John Doe");
+        assertThat(savedContact.getEmail()).isEqualTo("john@example.com");
+        assertThat(savedContact.getStatus()).isEqualTo(ApplicationConstants.OPEN_MESSAGE);
+        assertThat(savedContact.getCreatedAt()).isNotNull();
     }
 
     @Test
-    @DisplayName("findByStatus - Devrait retourner liste vide si aucun contact avec ce statut")
-    void findByStatus_ShouldReturnEmptyList_WhenNoContactsWithStatus() {
-        // Arrange
-        createAndPersistContact("John Doe", "john@example.com", ApplicationConstants.OPEN_MESSAGE);
+    @DisplayName("Devrait trouver un contact par son ID")
+    void shouldFindContactById() {
+        // Given
+        Contact contact = TestDataBuilder.createContact(null, "Jane Smith", "jane@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
+        Contact savedContact = entityManager.persistAndFlush(contact);
+        Long contactId = savedContact.getContactId();
 
-        // Act
+        // When
+        Optional<Contact> foundContact = contactRepository.findById(contactId);
+
+        // Then
+        assertThat(foundContact).isPresent();
+        assertThat(foundContact.get().getName()).isEqualTo("Jane Smith");
+        assertThat(foundContact.get().getEmail()).isEqualTo("jane@example.com");
+    }
+
+    @Test
+    @DisplayName("Devrait retourner Optional.empty() pour un ID inexistant")
+    void shouldReturnEmptyForNonExistentId() {
+        // When
+        Optional<Contact> foundContact = contactRepository.findById(999L);
+
+        // Then
+        assertThat(foundContact).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Devrait récupérer tous les contacts")
+    void shouldFindAllContacts() {
+        // Given
+        Contact c1 = TestDataBuilder.createContact(null, "Contact 1", "contact1@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
+        Contact c2 = TestDataBuilder.createContact(null, "Contact 2", "contact2@example.com",
+                ApplicationConstants.CLOSED_MESSAGE);
+        Contact c3 = TestDataBuilder.createContact(null, "Contact 3", "contact3@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
+
+        entityManager.persist(c1);
+        entityManager.persist(c2);
+        entityManager.persist(c3);
+        entityManager.flush();
+
+        // When
+        List<Contact> foundContacts = contactRepository.findAll();
+
+        // Then
+        assertThat(foundContacts).hasSize(3);
+        assertThat(foundContacts).extracting(Contact::getName)
+                .containsExactlyInAnyOrder("Contact 1", "Contact 2", "Contact 3");
+    }
+
+    @Test
+    @DisplayName("Devrait retourner une liste vide quand aucun contact n'existe")
+    void shouldReturnEmptyListWhenNoContacts() {
+        // When
+        List<Contact> foundContacts = contactRepository.findAll();
+
+        // Then
+        assertThat(foundContacts).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Devrait mettre à jour un contact existant")
+    void shouldUpdateExistingContact() {
+        // Given
+        Contact contact = TestDataBuilder.createContact(null, "Original Name", "original@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
+        Contact savedContact = entityManager.persistAndFlush(contact);
+        Long contactId = savedContact.getContactId();
+
+        // When
+        savedContact.setName("Updated Name");
+        savedContact.setStatus(ApplicationConstants.CLOSED_MESSAGE);
+        contactRepository.save(savedContact);
+        entityManager.flush();
+        entityManager.clear();
+
+        // Then
+        Optional<Contact> updatedContact = contactRepository.findById(contactId);
+        assertThat(updatedContact).isPresent();
+        assertThat(updatedContact.get().getName()).isEqualTo("Updated Name");
+        assertThat(updatedContact.get().getStatus()).isEqualTo(ApplicationConstants.CLOSED_MESSAGE);
+    }
+
+    @Test
+    @DisplayName("Devrait supprimer un contact par son ID")
+    void shouldDeleteContactById() {
+        // Given
+        Contact contact = TestDataBuilder.createContact(null, "To Delete", "delete@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
+        Contact savedContact = entityManager.persistAndFlush(contact);
+        Long contactId = savedContact.getContactId();
+
+        // When
+        contactRepository.deleteById(contactId);
+        entityManager.flush();
+
+        // Then
+        Optional<Contact> deletedContact = contactRepository.findById(contactId);
+        assertThat(deletedContact).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Devrait compter le nombre total de contacts")
+    void shouldCountAllContacts() {
+        // Given
+        Contact c1 = TestDataBuilder.createContact(null, "Contact 1", "c1@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
+        Contact c2 = TestDataBuilder.createContact(null, "Contact 2", "c2@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
+        Contact c3 = TestDataBuilder.createContact(null, "Contact 3", "c3@example.com",
+                ApplicationConstants.CLOSED_MESSAGE);
+
+        entityManager.persist(c1);
+        entityManager.persist(c2);
+        entityManager.persist(c3);
+        entityManager.flush();
+
+        // When
+        long count = contactRepository.count();
+
+        // Then
+        assertThat(count).isEqualTo(3);
+    }
+
+    // ==================== TESTS REQUÊTES PERSONNALISÉES ====================
+
+    @Test
+    @DisplayName("findByStatus - Devrait trouver les contacts par statut OPEN")
+    void shouldFindContactsByStatusOpen() {
+        // Given
+        Contact c1 = TestDataBuilder.createContact(null, "Open 1", "open1@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
+        Contact c2 = TestDataBuilder.createContact(null, "Open 2", "open2@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
+        Contact c3 = TestDataBuilder.createContact(null, "Closed", "closed@example.com",
+                ApplicationConstants.CLOSED_MESSAGE);
+
+        entityManager.persist(c1);
+        entityManager.persist(c2);
+        entityManager.persist(c3);
+        entityManager.flush();
+
+        // When
+        List<Contact> openContacts = contactRepository.findByStatus(ApplicationConstants.OPEN_MESSAGE);
+
+        // Then
+        assertThat(openContacts).hasSize(2);
+        assertThat(openContacts).extracting(Contact::getStatus)
+                .containsOnly(ApplicationConstants.OPEN_MESSAGE);
+        assertThat(openContacts).extracting(Contact::getName)
+                .containsExactlyInAnyOrder("Open 1", "Open 2");
+    }
+
+    @Test
+    @DisplayName("findByStatus - Devrait trouver les contacts par statut CLOSED")
+    void shouldFindContactsByStatusClosed() {
+        // Given
+        Contact c1 = TestDataBuilder.createContact(null, "Open", "open@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
+        Contact c2 = TestDataBuilder.createContact(null, "Closed 1", "closed1@example.com",
+                ApplicationConstants.CLOSED_MESSAGE);
+        Contact c3 = TestDataBuilder.createContact(null, "Closed 2", "closed2@example.com",
+                ApplicationConstants.CLOSED_MESSAGE);
+
+        entityManager.persist(c1);
+        entityManager.persist(c2);
+        entityManager.persist(c3);
+        entityManager.flush();
+
+        // When
         List<Contact> closedContacts = contactRepository.findByStatus(ApplicationConstants.CLOSED_MESSAGE);
 
-        // Assert
+        // Then
+        assertThat(closedContacts).hasSize(2);
+        assertThat(closedContacts).extracting(Contact::getStatus)
+                .containsOnly(ApplicationConstants.CLOSED_MESSAGE);
+        assertThat(closedContacts).extracting(Contact::getName)
+                .containsExactlyInAnyOrder("Closed 1", "Closed 2");
+    }
+
+    @Test
+    @DisplayName("findByStatus - Devrait retourner une liste vide si aucun contact avec ce statut")
+    void shouldReturnEmptyListWhenNoContactsWithStatus() {
+        // Given
+        Contact c1 = TestDataBuilder.createContact(null, "Open", "open@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
+        entityManager.persistAndFlush(c1);
+
+        // When
+        List<Contact> closedContacts = contactRepository.findByStatus(ApplicationConstants.CLOSED_MESSAGE);
+
+        // Then
         assertThat(closedContacts).isEmpty();
     }
 
     @Test
-    @DisplayName("fetchByStatus (Named Query) - Devrait retourner les contacts avec le statut")
-    void fetchByStatus_NamedQuery_ShouldReturnContactsWithStatus() {
-        // Arrange
-        createAndPersistContact("Alice Brown", "alice@example.com", ApplicationConstants.OPEN_MESSAGE);
-        createAndPersistContact("Charlie Davis", "charlie@example.com", ApplicationConstants.OPEN_MESSAGE);
-        createAndPersistContact("Diana Evans", "diana@example.com", ApplicationConstants.CLOSED_MESSAGE);
+    @DisplayName("fetchByStatus - Devrait fonctionner comme findByStatus (Named Query)")
+    void shouldFetchContactsByStatusUsingNamedQuery() {
+        // Given
+        Contact c1 = TestDataBuilder.createContact(null, "Open 1", "open1@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
+        Contact c2 = TestDataBuilder.createContact(null, "Open 2", "open2@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
+        Contact c3 = TestDataBuilder.createContact(null, "Closed", "closed@example.com",
+                ApplicationConstants.CLOSED_MESSAGE);
 
-        // Act
+        entityManager.persist(c1);
+        entityManager.persist(c2);
+        entityManager.persist(c3);
+        entityManager.flush();
+
+        // When
         List<Contact> openContacts = contactRepository.fetchByStatus(ApplicationConstants.OPEN_MESSAGE);
 
-        // Assert
+        // Then
         assertThat(openContacts).hasSize(2);
-        assertThat(openContacts).allMatch(c -> c.getStatus().equals(ApplicationConstants.OPEN_MESSAGE));
-        assertThat(openContacts).extracting(Contact::getName)
-                .containsExactlyInAnyOrder("Alice Brown", "Charlie Davis");
+        assertThat(openContacts).extracting(Contact::getStatus)
+                .containsOnly(ApplicationConstants.OPEN_MESSAGE);
     }
 
     @Test
-    @DisplayName("findByStatusWithNativeQuery - Devrait retourner les contacts avec le statut")
-    void findByStatusWithNativeQuery_ShouldReturnContactsWithStatus() {
-        // Arrange
-        createAndPersistContact("Mark Johnson", "mark@example.com", ApplicationConstants.OPEN_MESSAGE);
-        createAndPersistContact("Sarah Lee", "sarah@example.com", ApplicationConstants.CLOSED_MESSAGE);
-        createAndPersistContact("Tom Anderson", "tom@example.com", ApplicationConstants.OPEN_MESSAGE);
-
-        // Act
-        List<Contact> openContacts = contactRepository.findByStatusWithNativeQuery(ApplicationConstants.OPEN_MESSAGE);
-
-        // Assert
-        assertThat(openContacts).hasSize(2);
-        assertThat(openContacts).allMatch(c -> c.getStatus().equals(ApplicationConstants.OPEN_MESSAGE));
-    }
-
-    @Test
-    @DisplayName("save - Devrait persister un nouveau contact")
-    void save_ShouldPersistNewContact() {
-        // Arrange
-        Contact contact = TestDataBuilder.createContact(null, "Emma Watson", "emma@example.com",
+    @DisplayName("findByStatusWithNativeQuery - Devrait utiliser la requête native")
+    void shouldFindContactsByStatusUsingNativeQuery() {
+        // Given
+        Contact c1 = TestDataBuilder.createContact(null, "Open", "open@example.com",
                 ApplicationConstants.OPEN_MESSAGE);
+        Contact c2 = TestDataBuilder.createContact(null, "Closed 1", "closed1@example.com",
+                ApplicationConstants.CLOSED_MESSAGE);
+        Contact c3 = TestDataBuilder.createContact(null, "Closed 2", "closed2@example.com",
+                ApplicationConstants.CLOSED_MESSAGE);
 
-        // Act
+        entityManager.persist(c1);
+        entityManager.persist(c2);
+        entityManager.persist(c3);
+        entityManager.flush();
+
+        // When
+        List<Contact> closedContacts = contactRepository.findByStatusWithNativeQuery(
+                ApplicationConstants.CLOSED_MESSAGE);
+
+        // Then
+        assertThat(closedContacts).hasSize(2);
+        assertThat(closedContacts).extracting(Contact::getStatus)
+                .containsOnly(ApplicationConstants.CLOSED_MESSAGE);
+    }
+
+    @Test
+    @DisplayName("Devrait persister et récupérer toutes les propriétés d'un contact")
+    void shouldPersistAllContactProperties() {
+        // Given
+        Contact contact = TestDataBuilder.createContact(null, "Complete Contact",
+                "complete@example.com", ApplicationConstants.OPEN_MESSAGE);
+        contact.setMobileNumber("0612345678");
+        contact.setMessage("This is a complete test message");
+
+        // When
         Contact savedContact = contactRepository.save(contact);
         entityManager.flush();
         entityManager.clear();
 
-        // Assert
-        Contact foundContact = contactRepository.findById(savedContact.getContactId()).orElseThrow();
-        assertThat(foundContact.getContactId()).isNotNull();
-        assertThat(foundContact.getName()).isEqualTo("Emma Watson");
-        assertThat(foundContact.getEmail()).isEqualTo("emma@example.com");
-        assertThat(foundContact.getStatus()).isEqualTo(ApplicationConstants.OPEN_MESSAGE);
-        assertThat(foundContact.getMessage()).isNotBlank();
+        // Then
+        Optional<Contact> retrievedContact = contactRepository.findById(savedContact.getContactId());
+        assertThat(retrievedContact).isPresent();
+        Contact found = retrievedContact.get();
+
+        assertThat(found.getName()).isEqualTo("Complete Contact");
+        assertThat(found.getEmail()).isEqualTo("complete@example.com");
+        assertThat(found.getMobileNumber()).isEqualTo("0612345678");
+        assertThat(found.getMessage()).isEqualTo("This is a complete test message");
+        assertThat(found.getStatus()).isEqualTo(ApplicationConstants.OPEN_MESSAGE);
+        assertThat(found.getCreatedAt()).isNotNull();
+        assertThat(found.getCreatedBy()).isEqualTo("anonymous");
     }
 
     @Test
-    @DisplayName("save - Devrait mettre à jour un contact existant")
-    void save_ShouldUpdateExistingContact() {
-        // Arrange
-        Contact contact = createAndPersistContact("Robert Martin", "robert@example.com",
+    @DisplayName("Devrait gérer correctement plusieurs statuts différents")
+    void shouldHandleMultipleDifferentStatuses() {
+        // Given
+        Contact c1 = TestDataBuilder.createContact(null, "Open", "open@example.com",
                 ApplicationConstants.OPEN_MESSAGE);
-        Long contactId = contact.getContactId();
+        Contact c2 = TestDataBuilder.createContact(null, "Closed", "closed@example.com",
+                ApplicationConstants.CLOSED_MESSAGE);
 
-        // Modifier le statut
-        contact.setStatus(ApplicationConstants.CLOSED_MESSAGE);
-
-        // Act
-        contactRepository.save(contact);
-        entityManager.flush();
-        entityManager.clear();
-
-        // Assert
-        Contact updatedContact = contactRepository.findById(contactId).orElseThrow();
-        assertThat(updatedContact.getStatus()).isEqualTo(ApplicationConstants.CLOSED_MESSAGE);
-    }
-
-    @Test
-    @DisplayName("findById - Devrait retourner le contact par ID")
-    void findById_ShouldReturnContact_WhenExists() {
-        // Arrange
-        Contact contact = createAndPersistContact("Lisa Chen", "lisa@example.com",
-                ApplicationConstants.OPEN_MESSAGE);
-
-        // Act
-        Contact foundContact = contactRepository.findById(contact.getContactId()).orElse(null);
-
-        // Assert
-        assertThat(foundContact).isNotNull();
-        assertThat(foundContact.getName()).isEqualTo("Lisa Chen");
-        assertThat(foundContact.getEmail()).isEqualTo("lisa@example.com");
-    }
-
-    @Test
-    @DisplayName("findById - Devrait retourner Optional.empty si contact n'existe pas")
-    void findById_ShouldReturnEmpty_WhenNotExists() {
-        // Act
-        var result = contactRepository.findById(999L);
-
-        // Assert
-        assertThat(result).isEmpty();
-    }
-
-    @Test
-    @DisplayName("deleteById - Devrait supprimer le contact")
-    void deleteById_ShouldDeleteContact() {
-        // Arrange
-        Contact contact = createAndPersistContact("Michael Scott", "michael@example.com",
-                ApplicationConstants.OPEN_MESSAGE);
-        Long contactId = contact.getContactId();
-
-        // Act
-        contactRepository.deleteById(contactId);
+        entityManager.persist(c1);
+        entityManager.persist(c2);
         entityManager.flush();
 
-        // Assert
-        assertThat(contactRepository.findById(contactId)).isEmpty();
+        // When
+        List<Contact> openContacts = contactRepository.findByStatus(ApplicationConstants.OPEN_MESSAGE);
+        List<Contact> closedContacts = contactRepository.findByStatus(ApplicationConstants.CLOSED_MESSAGE);
+
+        // Then
+        assertThat(openContacts).hasSize(1);
+        assertThat(closedContacts).hasSize(1);
+        assertThat(openContacts.get(0).getName()).isEqualTo("Open");
+        assertThat(closedContacts.get(0).getName()).isEqualTo("Closed");
     }
 
     @Test
-    @DisplayName("count - Devrait retourner le nombre total de contacts")
-    void count_ShouldReturnTotalNumberOfContacts() {
-        // Arrange
-        createAndPersistContact("User 1", "user1@example.com", ApplicationConstants.OPEN_MESSAGE);
-        createAndPersistContact("User 2", "user2@example.com", ApplicationConstants.OPEN_MESSAGE);
-        createAndPersistContact("User 3", "user3@example.com", ApplicationConstants.CLOSED_MESSAGE);
+    @DisplayName("Devrait vérifier l'existence d'un contact par ID")
+    void shouldCheckContactExistence() {
+        // Given
+        Contact contact = TestDataBuilder.createContact(null, "Exists", "exists@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
+        Contact savedContact = entityManager.persistAndFlush(contact);
+        Long contactId = savedContact.getContactId();
 
-        // Act
-        long count = contactRepository.count();
+        // When
+        boolean exists = contactRepository.existsById(contactId);
+        boolean notExists = contactRepository.existsById(999L);
 
-        // Assert
-        assertThat(count).isEqualTo(3);
+        // Then
+        assertThat(exists).isTrue();
+        assertThat(notExists).isFalse();
     }
 
     @Test
-    @DisplayName("findAll - Devrait retourner tous les contacts")
-    void findAll_ShouldReturnAllContacts() {
-        // Arrange
-        createAndPersistContact("Contact A", "a@example.com", ApplicationConstants.OPEN_MESSAGE);
-        createAndPersistContact("Contact B", "b@example.com", ApplicationConstants.CLOSED_MESSAGE);
+    @DisplayName("Devrait supprimer tous les contacts")
+    void shouldDeleteAllContacts() {
+        // Given
+        Contact c1 = TestDataBuilder.createContact(null, "Contact 1", "c1@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
+        Contact c2 = TestDataBuilder.createContact(null, "Contact 2", "c2@example.com",
+                ApplicationConstants.OPEN_MESSAGE);
 
-        // Act
-        List<Contact> allContacts = contactRepository.findAll();
-
-        // Assert
-        assertThat(allContacts).hasSize(2);
-    }
-
-    // ==================== HELPER METHODS ====================
-
-    private Contact createAndPersistContact(String name, String email, String status) {
-        Contact contact = new Contact();
-        contact.setName(name);
-        contact.setEmail(email);
-        contact.setMobileNumber("0612345678");
-        contact.setMessage("Test message from " + name);
-        contact.setStatus(status);
-        contact.setCreatedAt(Instant.now());
-        contact.setCreatedBy("system");
-
-        Contact savedContact = entityManager.persist(contact);
+        entityManager.persist(c1);
+        entityManager.persist(c2);
         entityManager.flush();
-        return savedContact;
+
+        // When
+        contactRepository.deleteAll();
+        entityManager.flush();
+
+        // Then
+        assertThat(contactRepository.count()).isZero();
+        assertThat(contactRepository.findAll()).isEmpty();
     }
 }
-
- */

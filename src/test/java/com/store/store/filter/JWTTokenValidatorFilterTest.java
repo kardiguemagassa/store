@@ -1,24 +1,24 @@
-package com.store.store.security;
+package com.store.store.filter;
 
 import com.store.store.constants.ApplicationConstants;
-import com.store.store.filter.JWTTokenValidatorFilter;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.core.env.Environment;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import javax.crypto.SecretKey;
-import java.io.IOException;
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT) // Permet les stubs "inutiles"
 class JWTTokenValidatorFilterTest {
 
     @Mock
@@ -49,17 +50,9 @@ class JWTTokenValidatorFilterTest {
     void setUp() {
         List<String> publicPaths = List.of("/api/public/**", "/auth/login");
 
-        // Solution 1: Utiliser la réflexion pour injecter l'Environment
-        jwtFilter = new JWTTokenValidatorFilter(publicPaths);
-
-        // Injecter l'environment via réflexion
-        try {
-            Method setEnvironmentMethod = jwtFilter.getClass().getMethod("setEnvironment", Environment.class);
-            setEnvironmentMethod.setAccessible(true);
-            setEnvironmentMethod.invoke(jwtFilter, environment);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to set environment", e);
-        }
+        // Créer le spy
+        JWTTokenValidatorFilter realFilter = new JWTTokenValidatorFilter(publicPaths);
+        jwtFilter = spy(realFilter);
 
         String secret = "mySuperSecretKeyThatIsLongEnoughForHS512";
         secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
@@ -75,16 +68,22 @@ class JWTTokenValidatorFilterTest {
                 .compact();
     }
 
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
     @Test
     void doFilterInternal_WithValidToken_ShouldSetAuthentication() throws Exception {
         // Arrange
+        when(jwtFilter.getEnvironment()).thenReturn(environment);
         String authHeader = "Bearer " + validToken;
         when(request.getHeader(ApplicationConstants.JWT_HEADER)).thenReturn(authHeader);
         when(environment.getProperty(ApplicationConstants.JWT_SECRET_KEY,
                 ApplicationConstants.JWT_SECRET_DEFAULT_VALUE)).thenReturn("mySuperSecretKeyThatIsLongEnoughForHS512");
 
-        // Act - Utiliser la réflexion pour appeler la méthode protected
-        invokeDoFilterInternal();
+        // Act
+        jwtFilter.doFilter(request, response, filterChain);
 
         // Assert
         assertNotNull(SecurityContextHolder.getContext().getAuthentication());
@@ -95,17 +94,19 @@ class JWTTokenValidatorFilterTest {
     @Test
     void doFilterInternal_WithExpiredToken_ShouldReturnUnauthorized() throws Exception {
         // Arrange
+        when(jwtFilter.getEnvironment()).thenReturn(environment);
+        when(environment.getProperty(ApplicationConstants.JWT_SECRET_KEY,
+                ApplicationConstants.JWT_SECRET_DEFAULT_VALUE)).thenReturn("mySuperSecretKeyThatIsLongEnoughForHS512");
+
         String expiredToken = createExpiredToken();
         String authHeader = "Bearer " + expiredToken;
         when(request.getHeader(ApplicationConstants.JWT_HEADER)).thenReturn(authHeader);
-        when(environment.getProperty(ApplicationConstants.JWT_SECRET_KEY,
-                ApplicationConstants.JWT_SECRET_DEFAULT_VALUE)).thenReturn("mySuperSecretKeyThatIsLongEnoughForHS512");
 
         MockHttpServletResponse mockResponse = new MockHttpServletResponse();
         when(response.getWriter()).thenReturn(mockResponse.getWriter());
 
         // Act
-        invokeDoFilterInternal(request, mockResponse, filterChain);
+        jwtFilter.doFilter(request, mockResponse, filterChain);
 
         // Assert
         assertEquals(401, mockResponse.getStatus());
@@ -116,6 +117,7 @@ class JWTTokenValidatorFilterTest {
     @Test
     void doFilterInternal_WithInvalidToken_ShouldThrowBadCredentials() throws Exception {
         // Arrange
+        when(jwtFilter.getEnvironment()).thenReturn(environment);
         String authHeader = "Bearer invalid-token";
         when(request.getHeader(ApplicationConstants.JWT_HEADER)).thenReturn(authHeader);
         when(environment.getProperty(ApplicationConstants.JWT_SECRET_KEY,
@@ -123,8 +125,10 @@ class JWTTokenValidatorFilterTest {
 
         // Act & Assert
         assertThrows(org.springframework.security.authentication.BadCredentialsException.class, () -> {
-            invokeDoFilterInternal();
+            jwtFilter.doFilter(request, response, filterChain);
         });
+
+        verify(filterChain, never()).doFilter(request, response);
     }
 
     @Test
@@ -133,7 +137,7 @@ class JWTTokenValidatorFilterTest {
         when(request.getHeader(ApplicationConstants.JWT_HEADER)).thenReturn(null);
 
         // Act
-        invokeDoFilterInternal();
+        jwtFilter.doFilter(request, response, filterChain);
 
         // Assert
         verify(filterChain).doFilter(request, response);
@@ -165,45 +169,37 @@ class JWTTokenValidatorFilterTest {
     }
 
     @Test
-    void doFilterInternal_MissingJwtSecret_ShouldHandleGracefully() throws Exception {
+    void doFilterInternal_WithNullSecret_ShouldContinueWithoutAuthentication() throws Exception {
         // Arrange
+        when(jwtFilter.getEnvironment()).thenReturn(environment);
         String authHeader = "Bearer " + validToken;
         when(request.getHeader(ApplicationConstants.JWT_HEADER)).thenReturn(authHeader);
         when(environment.getProperty(ApplicationConstants.JWT_SECRET_KEY,
                 ApplicationConstants.JWT_SECRET_DEFAULT_VALUE)).thenReturn(null);
 
         // Act
-        invokeDoFilterInternal();
+        jwtFilter.doFilter(request, response, filterChain);
 
         // Assert
-        // Le filtre devrait continuer sans erreur
         verify(filterChain).doFilter(request, response);
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 
-    // Méthodes utilitaires pour appeler les méthodes protected via réflexion
+    @Test
+    void doFilterInternal_WithMalformedToken_ShouldThrowBadCredentials() throws Exception {
+        // Arrange
+        when(jwtFilter.getEnvironment()).thenReturn(environment);
+        String authHeader = "Bearer malformed.token.here";
+        when(request.getHeader(ApplicationConstants.JWT_HEADER)).thenReturn(authHeader);
+        when(environment.getProperty(ApplicationConstants.JWT_SECRET_KEY,
+                ApplicationConstants.JWT_SECRET_DEFAULT_VALUE)).thenReturn("mySuperSecretKeyThatIsLongEnoughForHS512");
 
-    private void invokeDoFilterInternal() throws Exception {
-        invokeDoFilterInternal(request, response, filterChain);
-    }
+        // Act & Assert
+        assertThrows(org.springframework.security.authentication.BadCredentialsException.class, () -> {
+            jwtFilter.doFilter(request, response, filterChain);
+        });
 
-    private void invokeDoFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws Exception {
-        try {
-            Method method = JWTTokenValidatorFilter.class.getDeclaredMethod(
-                    "doFilterInternal",
-                    HttpServletRequest.class,
-                    HttpServletResponse.class,
-                    FilterChain.class
-            );
-            method.setAccessible(true);
-            method.invoke(jwtFilter, request, response, filterChain);
-        } catch (Exception e) {
-            // Propager les exceptions runtime
-            if (e.getCause() instanceof RuntimeException) {
-                throw (RuntimeException) e.getCause();
-            }
-            throw new RuntimeException("Failed to invoke doFilterInternal", e);
-        }
+        verify(filterChain, never()).doFilter(request, response);
     }
 
     private String createExpiredToken() {
