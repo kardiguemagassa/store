@@ -6,8 +6,10 @@ import com.store.store.dto.OrderResponseDto;
 import com.store.store.dto.ResponseDto;
 import com.store.store.service.IContactService;
 import com.store.store.service.IOrderService;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
+@Validated
 public class AdminController {
 
     private final IOrderService iOrderService;
@@ -26,7 +29,8 @@ public class AdminController {
     }
 
     @PatchMapping("/orders/{orderId}/confirm")
-    public ResponseEntity<ResponseDto> confirmOrder(@PathVariable Long orderId) {
+    public ResponseEntity<ResponseDto> confirmOrder(
+            @PathVariable @Positive(message = "L'ID de commande doit être positif") Long orderId) {
         iOrderService.updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CONFIRMED);
         return ResponseEntity.ok(
                 new ResponseDto("200", "Commande #" + orderId + " a été approuvé.")
@@ -34,7 +38,8 @@ public class AdminController {
     }
 
     @PatchMapping("/orders/{orderId}/cancel")
-    public ResponseEntity<ResponseDto> cancelOrder(@PathVariable Long orderId) {
+    public ResponseEntity<ResponseDto> cancelOrder(
+            @PathVariable @Positive(message = "L'ID de commande doit être positif") Long orderId) {
         iOrderService.updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CANCELLED);
         return ResponseEntity.ok(
                 new ResponseDto("200", "Commande #" + orderId + " a été annulé.")
@@ -47,11 +52,11 @@ public class AdminController {
     }
 
     @PatchMapping("/messages/{contactId}/close")
-    public ResponseEntity<ResponseDto> closeMessage(@PathVariable Long contactId) {
+    public ResponseEntity<ResponseDto> closeMessage(
+            @PathVariable @Positive(message = "L'ID de contact doit être positif") Long contactId) {
         iContactService.updateMessageStatus(contactId, ApplicationConstants.CLOSED_MESSAGE);
         return ResponseEntity.ok(
                 new ResponseDto("200", "Contact #" + contactId + " a été fermé.")
         );
     }
-
 }
