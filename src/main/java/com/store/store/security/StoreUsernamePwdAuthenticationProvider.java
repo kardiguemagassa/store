@@ -32,7 +32,7 @@ public class StoreUsernamePwdAuthenticationProvider implements AuthenticationPro
             throw new BadCredentialsException("Invalid credentials");
         }
 
-        // Utiliser CustomerUserDetails
+        // ustomerUserDetails
         CustomerUserDetails userDetails = new CustomerUserDetails(customer);
 
         return new UsernamePasswordAuthenticationToken(

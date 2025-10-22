@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 public record CustomerUserDetails(Customer customer) implements UserDetails {
 
-    // Constructeur compact avec validations
+    // Constructeur avec validations
     public CustomerUserDetails {
         if (customer == null) {
             throw new IllegalArgumentException("Customer cannot be null");
