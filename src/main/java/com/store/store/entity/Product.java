@@ -30,4 +30,7 @@ public class Product extends BaseEntity {
     @Column(name = "IMAGE_URL", length = 500)
     private String imageUrl;
 
+    @Column(name = "CATEGORY", nullable = false, length = 100)
+    private String category;
+
 }
