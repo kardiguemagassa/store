@@ -9,7 +9,7 @@ import com.store.store.entity.Role;
 import com.store.store.repository.CustomerRepository;
 import com.store.store.repository.RoleRepository;
 import com.store.store.security.CustomerUserDetails;
-
+import com.store.store.service.RoleAssignmentService;
 import com.store.store.util.JwtUtil;
 import com.store.store.util.TestDataBuilder;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,7 +18,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -78,26 +77,58 @@ class AuthControllerTest {
     @MockitoBean
     private JwtUtil jwtUtil;
 
+    @MockitoBean
+    private RoleAssignmentService roleAssignmentService;
+
+    //Constantes
+    private static final String TEST_EMAIL = "test@example.com";
+    private static final String TEST_PASSWORD = "password123";
+    private static final String TEST_MOBILE = "0612345678";
+    private static final String TEST_NAME = "Test User";
+    private static final String MOCK_JWT = "mock-jwt-token-12345";
+    private static final String STRONG_PASSWORD = "StrongP@ssw0rd";
+
     private Customer mockCustomer;
     private Role mockRole;
     private CustomerUserDetails mockUserDetails;
 
     @BeforeEach
     void setUp() {
-        // ✅ Utiliser TestDataBuilder
+        // Utiliser TestDataBuilder
         mockRole = TestDataBuilder.createRoleEntity("ROLE_USER");
         mockRole.setRoleId(1L);
 
-        mockCustomer = TestDataBuilder.createCustomer(1L, "Test", "User", "test@example.com");
-        mockCustomer.setMobileNumber("0612345678");  // ✅ Override avec format 10 chiffres
+        mockCustomer = TestDataBuilder.createCustomer(1L, "Test", "User", TEST_EMAIL);
+        mockCustomer.setMobileNumber(TEST_MOBILE);  // format 10 chiffres
         mockCustomer.setRoles(Set.of(mockRole));
 
-        // ✅ Créer CustomerUserDetails pour éviter le ClassCastException
+        // Créer CustomerUserDetails pour éviter le ClassCastException
         mockUserDetails = new CustomerUserDetails(mockCustomer);
     }
 
-    // ==================== TESTS LOGIN ====================
+    // HELPERS
+    private LoginRequestDto createLoginRequest(String email, String password) {
+        return new LoginRequestDto(email, password);
+    }
 
+    private RegisterRequestDto createRegisterRequest(String email, String name, String mobile, String password) {
+        RegisterRequestDto request = new RegisterRequestDto();
+        request.setEmail(email);
+        request.setName(name);
+        request.setMobileNumber(mobile);
+        request.setPassword(password);
+        return request;
+    }
+
+    private Authentication createMockAuthentication(CustomerUserDetails userDetails) {
+        return new UsernamePasswordAuthenticationToken(
+                userDetails,
+                TEST_PASSWORD,
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+    }
+
+    // TESTS LOGIN
     @Nested
     @DisplayName("POST /api/v1/auth/login - Connexion")
     class LoginTests {
@@ -106,19 +137,13 @@ class AuthControllerTest {
         @DisplayName("Devrait connecter un utilisateur avec des credentials valides")
         void shouldLoginSuccessfully() throws Exception {
             // Given
-            LoginRequestDto loginRequest = new LoginRequestDto("test@example.com", "password123");
-
-            // ✅ Utiliser CustomerUserDetails au lieu de Customer
-            Authentication mockAuth = new UsernamePasswordAuthenticationToken(
-                    mockUserDetails,
-                    "password123",
-                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
-            );
+            LoginRequestDto loginRequest = createLoginRequest(TEST_EMAIL, TEST_PASSWORD);
+            Authentication mockAuth = createMockAuthentication(mockUserDetails);
 
             when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                     .thenReturn(mockAuth);
             when(jwtUtil.generateJwtToken(any(Authentication.class)))
-                    .thenReturn("mock-jwt-token-12345");
+                    .thenReturn(MOCK_JWT);
 
             // When & Then
             mockMvc.perform(post("/api/v1/auth/login")
@@ -126,11 +151,11 @@ class AuthControllerTest {
                             .content(objectMapper.writeValueAsString(loginRequest)))
                     .andDo(print())
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.message", is("OK")))  // ✅ Changé de $.status
-                    .andExpect(jsonPath("$.user.email", is("test@example.com")))
-                    .andExpect(jsonPath("$.user.name", is("Test User")))
+                    .andExpect(jsonPath("$.message", is("OK")))
+                    .andExpect(jsonPath("$.user.email", is(TEST_EMAIL)))
+                    .andExpect(jsonPath("$.user.name", is(TEST_NAME)))
                     .andExpect(jsonPath("$.user.roles", is("ROLE_USER")))
-                    .andExpect(jsonPath("$.jwtToken", is("mock-jwt-token-12345")));
+                    .andExpect(jsonPath("$.jwtToken", is(MOCK_JWT)));
 
             verify(authenticationManager, times(1)).authenticate(any(UsernamePasswordAuthenticationToken.class));
             verify(jwtUtil, times(1)).generateJwtToken(any(Authentication.class));
@@ -140,20 +165,20 @@ class AuthControllerTest {
         @DisplayName("Devrait retourner 401 pour des credentials invalides")
         void shouldReturnUnauthorizedForInvalidCredentials() throws Exception {
             // Given
-            LoginRequestDto loginRequest = new LoginRequestDto("test@example.com", "wrongpassword");
+            LoginRequestDto loginRequest = createLoginRequest(TEST_EMAIL, "wrongpassword");
 
             when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                     .thenThrow(new BadCredentialsException("Bad credentials"));
 
-            // When & Then
+            // When & Then -Vérifiez la structure de GlobalExceptionHandler
             mockMvc.perform(post("/api/v1/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(loginRequest)))
                     .andDo(print())
                     .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.message", is("Nom d'utilisateur ou mot de passe invalide")))  // ✅ Changé
-                    .andExpect(jsonPath("$.user").doesNotExist())
-                    .andExpect(jsonPath("$.jwtToken").doesNotExist());
+                    .andExpect(jsonPath("$.message", is("Nom d'utilisateur ou mot de passe invalide")))
+                    .andExpect(jsonPath("$.status", is("Unauthorized")))
+                    .andExpect(jsonPath("$.statusCode", is(401)));
 
             verify(authenticationManager, times(1)).authenticate(any(UsernamePasswordAuthenticationToken.class));
             verify(jwtUtil, never()).generateJwtToken(any());
@@ -163,18 +188,20 @@ class AuthControllerTest {
         @DisplayName("Devrait gérer une erreur d'authentification générique")
         void shouldHandleGenericAuthenticationException() throws Exception {
             // Given
-            LoginRequestDto loginRequest = new LoginRequestDto("test@example.com", "password123");
+            LoginRequestDto loginRequest = createLoginRequest(TEST_EMAIL, TEST_PASSWORD);
 
             when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                     .thenThrow(new RuntimeException("Authentication service unavailable"));
 
-            // When & Then
+            // When & Then - CORRECTION : Vérifiez la structure de GlobalExceptionHandler
             mockMvc.perform(post("/api/v1/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(loginRequest)))
                     .andDo(print())
                     .andExpect(status().isInternalServerError())
-                    .andExpect(jsonPath("$.message", is("Une erreur inattendue s'est produite")));  // ✅ Changé
+                    .andExpect(jsonPath("$.message", is("Une erreur technique s'est produite")))
+                    .andExpect(jsonPath("$.status", is("Internal Server Error")))
+                    .andExpect(jsonPath("$.statusCode", is(500)));
 
             verify(authenticationManager, times(1)).authenticate(any());
         }
@@ -189,11 +216,11 @@ class AuthControllerTest {
 
             CustomerUserDetails userDetailsWithRoles = new CustomerUserDetails(mockCustomer);
 
-            LoginRequestDto loginRequest = new LoginRequestDto("admin@example.com", "password123");
+            LoginRequestDto loginRequest = createLoginRequest("admin@example.com", TEST_PASSWORD);
 
             Authentication mockAuth = new UsernamePasswordAuthenticationToken(
                     userDetailsWithRoles,
-                    "password123",
+                    TEST_PASSWORD,
                     Set.of(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_ADMIN"))
             );
 
@@ -209,21 +236,36 @@ class AuthControllerTest {
         }
 
         @Test
-        @DisplayName("Devrait retourner 400 pour une requête sans body")
-        void shouldReturnBadRequestForMissingBody() throws Exception {
-            // When & Then - Spring retourne 400 (Bad Request) pour un body manquant
+        @DisplayName("Devrait retourner 400 pour une requête avec body vide")
+        void shouldReturnBadRequestForEmptyBody() throws Exception {
+            // When & Then
             mockMvc.perform(post("/api/v1/auth/login")
-                            .contentType(MediaType.APPLICATION_JSON))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
                     .andDo(print())
-                    .andExpect(status().isBadRequest())  // ✅ Changé à 400
-                    .andExpect(jsonPath("$").doesNotExist()); // Pas de body de réponse
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.username").exists())
+                    .andExpect(jsonPath("$.errors.password").exists());
+
+            verify(authenticationManager, never()).authenticate(any());
+        }
+
+        @Test
+        @DisplayName("Devrait retourner 400 pour une requête avec body invalide")
+        void shouldReturnBadRequestForInvalidBody() throws Exception {
+            // When & Then
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{invalid-json}"))
+                    .andDo(print())
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message", containsString("JSON")));
 
             verify(authenticationManager, never()).authenticate(any());
         }
     }
 
-    // ==================== TESTS REGISTER ====================
-
+    // TESTS REGISTER
     @Nested
     @DisplayName("POST /api/v1/auth/register - Inscription")
     class RegisterTests {
@@ -232,11 +274,8 @@ class AuthControllerTest {
         @DisplayName("Devrait enregistrer un nouvel utilisateur avec succès")
         void shouldRegisterNewUserSuccessfully() throws Exception {
             // Given
-            RegisterRequestDto registerRequest = new RegisterRequestDto();
-            registerRequest.setEmail("newuser@example.com");
-            registerRequest.setName("New User");
-            registerRequest.setMobileNumber("0612345678");
-            registerRequest.setPassword("StrongP@ssw0rd");
+            RegisterRequestDto registerRequest = createRegisterRequest(
+                    "newuser@example.com", "New User", TEST_MOBILE, STRONG_PASSWORD);
 
             when(compromisedPasswordChecker.check(anyString()))
                     .thenReturn(new CompromisedPasswordDecision(false));
@@ -244,8 +283,12 @@ class AuthControllerTest {
                     .thenReturn(Optional.empty());
             when(passwordEncoder.encode(anyString()))
                     .thenReturn("$2a$10$encodedPassword");
-            when(roleRepository.findByName("ROLE_USER"))
-                    .thenReturn(Optional.of(mockRole));
+
+            // MOCK DU SERVICE DE RÔLES
+            Set<Role> userRoles = Set.of(mockRole);
+            when(roleAssignmentService.determineInitialRoles(any(RegisterRequestDto.class)))
+                    .thenReturn(userRoles);
+
             when(customerRepository.save(any(Customer.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -260,6 +303,7 @@ class AuthControllerTest {
             verify(compromisedPasswordChecker, times(1)).check(anyString());
             verify(customerRepository, times(1)).findByEmailOrMobileNumber(anyString(), anyString());
             verify(passwordEncoder, times(1)).encode(anyString());
+            verify(roleAssignmentService, times(1)).determineInitialRoles(any(RegisterRequestDto.class));
             verify(customerRepository, times(1)).save(any(Customer.class));
         }
 
@@ -267,11 +311,8 @@ class AuthControllerTest {
         @DisplayName("Devrait rejeter un mot de passe compromis")
         void shouldRejectCompromisedPassword() throws Exception {
             // Given
-            RegisterRequestDto registerRequest = new RegisterRequestDto();
-            registerRequest.setEmail("newuser@example.com");
-            registerRequest.setName("New User");
-            registerRequest.setMobileNumber("0612345678");
-            registerRequest.setPassword("password123");
+            RegisterRequestDto registerRequest = createRegisterRequest(
+                    "newuser@example.com", "New User", TEST_MOBILE, "password123");
 
             when(compromisedPasswordChecker.check(anyString()))
                     .thenReturn(new CompromisedPasswordDecision(true));
@@ -292,13 +333,10 @@ class AuthControllerTest {
         @DisplayName("Devrait rejeter un email déjà enregistré")
         void shouldRejectDuplicateEmail() throws Exception {
             // Given
-            RegisterRequestDto registerRequest = new RegisterRequestDto();
-            registerRequest.setEmail("existing@example.com");  // ✅ Même email que mockCustomer
-            registerRequest.setName("New User");
-            registerRequest.setMobileNumber("0698765432");  // ✅ Numéro différent
-            registerRequest.setPassword("StrongP@ssw0rd");
+            RegisterRequestDto registerRequest = createRegisterRequest(
+                    "existing@example.com", "New User", "0698765432", STRONG_PASSWORD);
 
-            // ✅ Mock customer avec le même email
+            // Mock customer avec le même email
             Customer existingCustomer = TestDataBuilder.createCustomer(2L, "Existing", "User", "existing@example.com");
 
             when(compromisedPasswordChecker.check(anyString()))
@@ -321,19 +359,16 @@ class AuthControllerTest {
         @DisplayName("Devrait rejeter un numéro de téléphone déjà enregistré")
         void shouldRejectDuplicateMobileNumber() throws Exception {
             // Given
-            RegisterRequestDto registerRequest = new RegisterRequestDto();
-            registerRequest.setEmail("newuser@example.com");
-            registerRequest.setName("New User");
-            registerRequest.setMobileNumber("0612345678");  // ✅ Format 10 chiffres
-            registerRequest.setPassword("StrongP@ssw0rd");
+            RegisterRequestDto registerRequest = createRegisterRequest(
+                    "newuser@example.com", "New User", TEST_MOBILE, STRONG_PASSWORD);
 
-            // ✅ Mock customer avec MÊME numéro
+            // Mock customer avec meme numéro
             Customer existingCustomer = TestDataBuilder.createCustomer(2L, "Existing", "User", "existing@example.com");
-            existingCustomer.setMobileNumber("0612345678");  // ✅ Override avec le bon format
+            existingCustomer.setMobileNumber(TEST_MOBILE);  // Override avec le bon format
 
             when(compromisedPasswordChecker.check(anyString()))
                     .thenReturn(new CompromisedPasswordDecision(false));
-            when(customerRepository.findByEmailOrMobileNumber("newuser@example.com", "0612345678"))
+            when(customerRepository.findByEmailOrMobileNumber("newuser@example.com", TEST_MOBILE))
                     .thenReturn(Optional.of(existingCustomer));
 
             // When & Then
@@ -352,18 +387,15 @@ class AuthControllerTest {
         @DisplayName("Devrait rejeter les deux (email et téléphone) s'ils existent déjà")
         void shouldRejectBothEmailAndMobileNumber() throws Exception {
             // Given
-            RegisterRequestDto registerRequest = new RegisterRequestDto();
-            registerRequest.setEmail("test@example.com");
-            registerRequest.setName("New User");
-            registerRequest.setMobileNumber("0612345678");  // ✅ Format 10 chiffres
-            registerRequest.setPassword("StrongP@ssw0rd");
+            RegisterRequestDto registerRequest = createRegisterRequest(
+                    TEST_EMAIL, "New User", TEST_MOBILE, STRONG_PASSWORD);
 
-            // ✅ Override le mockCustomer avec le bon format de numéro
-            mockCustomer.setMobileNumber("0612345678");
+            // Override le mockCustomer avec le bon format de numéro
+            mockCustomer.setMobileNumber(TEST_MOBILE);
 
             when(compromisedPasswordChecker.check(anyString()))
                     .thenReturn(new CompromisedPasswordDecision(false));
-            when(customerRepository.findByEmailOrMobileNumber("test@example.com", "0612345678"))
+            when(customerRepository.findByEmailOrMobileNumber(TEST_EMAIL, TEST_MOBILE))
                     .thenReturn(Optional.of(mockCustomer));
 
             // When & Then
@@ -399,11 +431,8 @@ class AuthControllerTest {
         @DisplayName("Devrait encoder le mot de passe avant de sauvegarder")
         void shouldEncodePasswordBeforeSaving() throws Exception {
             // Given
-            RegisterRequestDto registerRequest = new RegisterRequestDto();
-            registerRequest.setEmail("newuser@example.com");
-            registerRequest.setName("New User");
-            registerRequest.setMobileNumber("0612345678");
-            registerRequest.setPassword("PlainPassword123");
+            RegisterRequestDto registerRequest = createRegisterRequest(
+                    "newuser@example.com", "New User", TEST_MOBILE, "PlainPassword123");
 
             String encodedPassword = "$2a$10$encodedPlainPassword123";
 
@@ -413,8 +442,12 @@ class AuthControllerTest {
                     .thenReturn(Optional.empty());
             when(passwordEncoder.encode("PlainPassword123"))
                     .thenReturn(encodedPassword);
-            when(roleRepository.findByName("ROLE_USER"))
-                    .thenReturn(Optional.of(mockRole));
+
+            // MOCK DU SERVICE DE RÔLES
+            Set<Role> userRoles = Set.of(mockRole);
+            when(roleAssignmentService.determineInitialRoles(any(RegisterRequestDto.class)))
+                    .thenReturn(userRoles);
+
             when(customerRepository.save(any(Customer.class)))
                     .thenAnswer(invocation -> {
                         Customer saved = invocation.getArgument(0);
@@ -429,17 +462,15 @@ class AuthControllerTest {
                     .andExpect(status().isCreated());
 
             verify(passwordEncoder, times(1)).encode("PlainPassword123");
+            verify(roleAssignmentService, times(1)).determineInitialRoles(any(RegisterRequestDto.class));
         }
 
         @Test
         @DisplayName("Devrait assigner automatiquement le rôle USER")
         void shouldAutomaticallyAssignUserRole() throws Exception {
             // Given
-            RegisterRequestDto registerRequest = new RegisterRequestDto();
-            registerRequest.setEmail("newuser@example.com");
-            registerRequest.setName("New User");
-            registerRequest.setMobileNumber("0612345678");
-            registerRequest.setPassword("StrongP@ssw0rd");
+            RegisterRequestDto registerRequest = createRegisterRequest(
+                    "newuser@example.com", "New User", TEST_MOBILE, STRONG_PASSWORD);
 
             when(compromisedPasswordChecker.check(anyString()))
                     .thenReturn(new CompromisedPasswordDecision(false));
@@ -447,8 +478,12 @@ class AuthControllerTest {
                     .thenReturn(Optional.empty());
             when(passwordEncoder.encode(anyString()))
                     .thenReturn("$2a$10$encoded");
-            when(roleRepository.findByName("ROLE_USER"))
-                    .thenReturn(Optional.of(mockRole));
+
+            // MOCK DU SERVICE DE RÔLES
+            Set<Role> userRoles = Set.of(mockRole);
+            when(roleAssignmentService.determineInitialRoles(any(RegisterRequestDto.class)))
+                    .thenReturn(userRoles);
+
             when(customerRepository.save(any(Customer.class)))
                     .thenAnswer(invocation -> {
                         Customer saved = invocation.getArgument(0);
@@ -462,7 +497,37 @@ class AuthControllerTest {
                             .content(objectMapper.writeValueAsString(registerRequest)))
                     .andExpect(status().isCreated());
 
-            verify(roleRepository, times(1)).findByName("ROLE_USER");
+            verify(roleAssignmentService, times(1)).determineInitialRoles(any(RegisterRequestDto.class));
+        }
+
+        @Test
+        @DisplayName("Devrait gérer l'absence du rôle USER en base")
+        void shouldHandleMissingUserRole() throws Exception {
+            // Given
+            RegisterRequestDto registerRequest = createRegisterRequest(
+                    "newuser@example.com", "New User", TEST_MOBILE, STRONG_PASSWORD);
+
+            when(compromisedPasswordChecker.check(anyString()))
+                    .thenReturn(new CompromisedPasswordDecision(false));
+            when(customerRepository.findByEmailOrMobileNumber(anyString(), anyString()))
+                    .thenReturn(Optional.empty());
+
+            // MOCK DU SERVICE QUI LANCE UNE EXCEPTION
+            when(roleAssignmentService.determineInitialRoles(any(RegisterRequestDto.class)))
+                    .thenThrow(new RuntimeException("Erreur de configuration du système"));
+
+            // When & Then - CORRECTION : Vérifiez la structure de GlobalExceptionHandler
+            mockMvc.perform(post("/api/v1/auth/register")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(registerRequest)))
+                    .andDo(print())
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(jsonPath("$.message", containsString("technique"))) // Vérifiez le message
+                    .andExpect(jsonPath("$.status", is("Internal Server Error"))) // Vérifiez le statut
+                    .andExpect(jsonPath("$.statusCode", is(500))); // Vérifiez le code
+
+            verify(customerRepository, never()).save(any());
+            verify(roleAssignmentService, times(1)).determineInitialRoles(any(RegisterRequestDto.class));
         }
     }
 }

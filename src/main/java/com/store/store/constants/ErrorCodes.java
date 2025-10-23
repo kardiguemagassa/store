@@ -5,7 +5,7 @@ public final class ErrorCodes {
 
     //VALIDATION ERRORS
     public static final String VALIDATION_ERROR = "VALIDATION_ERROR";
-    public static final String TYPE_MISMATCH = "TYPE_MISMATCH_ERROR";
+    public static final String TYPE_MISMATCH = "TYPE_MISMATCH";
     public static final String CONSTRAINT_VIOLATION = "CONSTRAINT_VIOLATION";
     public static final String INVALID_FORMAT = "INVALID_FORMAT_ERROR";
 
@@ -23,8 +23,14 @@ public final class ErrorCodes {
 
     //TECHNICAL ERRORS
     public static final String INTERNAL_ERROR = "INTERNAL_ERROR";
+    public static final String INVALID_JSON = "INVALID_JSON";
+    public static final String CONFIGURATION_ERROR = "CONFIGURATION_ERROR";
     public static final String EXTERNAL_SERVICE_ERROR = "EXTERNAL_SERVICE_ERROR";
     public static final String DATABASE_ERROR = "DATABASE_ERROR";
+
+    public static final String INVALID_CREDENTIALS = "INVALID_CREDENTIALS";
+    public static final String ACCOUNT_DISABLED = "ACCOUNT_DISABLED";
+    public static final String ACCOUNT_LOCKED = "ACCOUNT_LOCKED";
 
     //UTILITY METHODS
     /**

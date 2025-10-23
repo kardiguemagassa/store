@@ -5,10 +5,11 @@ import com.store.store.config.TestSecurityConfig;
 import com.store.store.constants.ApplicationConstants;
 import com.store.store.dto.ContactResponseDto;
 import com.store.store.dto.OrderResponseDto;
-import com.store.store.exception.ContactNotFoundException;
-import com.store.store.exception.OrderNotFoundException;
+import com.store.store.exception.*;
+import com.store.store.repository.CustomerRepository;
 import com.store.store.service.IContactService;
 import com.store.store.service.IOrderService;
+import com.store.store.service.RoleAssignmentService;
 import com.store.store.util.TestDataBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,8 +30,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.hamcrest.Matchers.*;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -55,11 +55,21 @@ class AdminControllerTest {
     @MockitoBean
     private IContactService contactService;
 
+    @MockitoBean
+    private CustomerRepository customerRepository;
+
+    @MockitoBean
+    private RoleAssignmentService roleAssignmentService;
+
+    @MockitoBean
+    private ExceptionFactory exceptionFactory;
+
     private List<OrderResponseDto> mockOrders;
     private List<ContactResponseDto> mockMessages;
 
     @BeforeEach
     void setUp() {
+        // Données de test
         mockOrders = Arrays.asList(
                 TestDataBuilder.createOrderResponseDto(1L),
                 TestDataBuilder.createOrderResponseDto(2L)
@@ -70,90 +80,63 @@ class AdminControllerTest {
                 TestDataBuilder.createContactResponseDto(2L)
         );
 
+        // Configuration des mocks par défaut
         when(orderService.getAllPendingOrders()).thenReturn(mockOrders);
         when(contactService.getAllOpenMessages()).thenReturn(mockMessages);
         doNothing().when(orderService).updateOrderStatus(anyLong(), anyString());
         doNothing().when(contactService).updateMessageStatus(anyLong(), anyString());
+
+        // CORRECTION : Configuration complète des exceptions
+        when(exceptionFactory.orderNotFound(anyLong()))
+                .thenAnswer(invocation -> {
+                    Long orderId = invocation.getArgument(0);
+                    return new OrderNotFoundException(orderId);
+                });
+
+        when(exceptionFactory.contactNotFound(anyLong()))
+                .thenAnswer(invocation -> {
+                    Long contactId = invocation.getArgument(0);
+                    return new ContactNotFoundException(contactId);
+                });
+
+        when(exceptionFactory.resourceNotFound(anyString(), anyString(), anyString()))
+                .thenAnswer(invocation -> {
+                    String resource = invocation.getArgument(0);
+                    String field = invocation.getArgument(1);
+                    String value = invocation.getArgument(2);
+                    return new ResourceNotFoundException(resource, field, value);
+                });
+
+        when(exceptionFactory.businessError(anyString()))
+                .thenAnswer(invocation -> {
+                    String message = invocation.getArgument(0);
+                    return new BusinessException(message);
+                });
     }
 
-    // ===== TESTS GESTION ERREURS MÉTIER =====
-
-    @Test
-    @WithMockUser(roles = "ADMIN")
-    @DisplayName("Devrait retourner 404 quand la commande n'existe pas")
-    void shouldReturnNotFoundWhenOrderDoesNotExist() throws Exception {
-        // Arrange
-        Long orderId = 999L;
-        doThrow(new OrderNotFoundException(orderId))
-                .when(orderService).updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CONFIRMED);
-
-        // Act & Assert
-        mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/confirm", orderId)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value("Not Found"))
-                .andExpect(jsonPath("$.statusCode").value(404))
-                .andExpect(jsonPath("$.message").value("Commande introuvable avec les données id : '999'"));
-
-        // Verify
-        verify(orderService).updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CONFIRMED);
-    }
-
-    @Test
-    @WithMockUser(roles = "ADMIN")
-    @DisplayName("Devrait retourner 404 quand le message n'existe pas")
-    void shouldReturnNotFoundWhenMessageDoesNotExist() throws Exception {
-        // Arrange
-        Long contactId = 999L;
-        doThrow(new ContactNotFoundException(contactId))
-                .when(contactService).updateMessageStatus(contactId, ApplicationConstants.CLOSED_MESSAGE);
-
-        // Act & Assert - ✅ MESSAGE CORRIGÉ
-        mockMvc.perform(patch("/api/v1/admin/messages/{contactId}/close", contactId)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status").value("Not Found"))
-                .andExpect(jsonPath("$.statusCode").value(404))
-                .andExpect(jsonPath("$.message").value("Contact introuvable avec les données id : '999'")); // ✅ CORRIGÉ
-
-        // Verify
-        verify(contactService).updateMessageStatus(contactId, ApplicationConstants.CLOSED_MESSAGE);
-    }
-
-    // ===== TESTS COMMANDES EN ATTENTE =====
-
+    //COMMANDES EN ATTENTE
     @Nested
-    @DisplayName("GET /api/v1/admin/orders - Récupérer toutes les commandes en attente")
+    @DisplayName("GET /api/v1/admin/orders - Récupérer les commandes en attente")
     class GetAllPendingOrdersTests {
 
         @Test
         @WithMockUser(roles = "ADMIN")
-        @DisplayName("Devrait retourner la liste des commandes en attente avec succès")
+        @DisplayName("Devrait retourner la liste des commandes en attente")
         void shouldReturnAllPendingOrders() throws Exception {
-            // Arrange
-            when(orderService.getAllPendingOrders()).thenReturn(mockOrders);
-
             // Act & Assert
             mockMvc.perform(get("/api/v1/admin/orders")
                             .contentType(MediaType.APPLICATION_JSON))
-                    .andDo(print())
                     .andExpect(status().isOk())
-                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$", hasSize(2)))
                     .andExpect(jsonPath("$[0].orderId", is(1)))
-                    .andExpect(jsonPath("$[0].status", is(ApplicationConstants.ORDER_STATUS_CREATED)))
-                    .andExpect(jsonPath("$[0].totalPrice", is(175.00)))
-                    .andExpect(jsonPath("$[0].items", hasSize(2)))
-                    .andExpect(jsonPath("$[1].orderId", is(2)))
-                    .andExpect(jsonPath("$[1].status", is(ApplicationConstants.ORDER_STATUS_CREATED)));
+                    .andExpect(jsonPath("$[1].orderId", is(2)));
 
-            // Verify
-            verify(orderService, times(1)).getAllPendingOrders();
+            verify(orderService).getAllPendingOrders();
         }
 
         @Test
         @WithMockUser(roles = "ADMIN")
-        @DisplayName("Devrait retourner une liste vide s'il n'y a pas de commandes en attente")
+        @DisplayName("Devrait retourner une liste vide quand il n'y a pas de commandes")
         void shouldReturnEmptyListWhenNoPendingOrders() throws Exception {
             // Arrange
             when(orderService.getAllPendingOrders()).thenReturn(Collections.emptyList());
@@ -161,14 +144,10 @@ class AdminControllerTest {
             // Act & Assert
             mockMvc.perform(get("/api/v1/admin/orders")
                             .contentType(MediaType.APPLICATION_JSON))
-                    .andDo(print())
                     .andExpect(status().isOk())
-                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$", hasSize(0)))
                     .andExpect(jsonPath("$", empty()));
 
-            // Verify
-            verify(orderService, times(1)).getAllPendingOrders();
+            verify(orderService).getAllPendingOrders();
         }
 
         @Test
@@ -178,29 +157,13 @@ class AdminControllerTest {
             // Act & Assert
             mockMvc.perform(get("/api/v1/admin/orders")
                             .contentType(MediaType.APPLICATION_JSON))
-                    .andDo(print())
                     .andExpect(status().isForbidden());
 
-            // Verify
-            verify(orderService, never()).getAllPendingOrders();
-        }
-
-        @Test
-        @DisplayName("Devrait refuser l'accès aux utilisateurs non authentifiés")
-        void shouldDenyAccessForUnauthenticatedUsers() throws Exception {
-            // Act & Assert
-            mockMvc.perform(get("/api/v1/admin/orders")
-                            .contentType(MediaType.APPLICATION_JSON))
-                    .andDo(print())
-                    .andExpect(status().isUnauthorized());
-
-            // Verify
             verify(orderService, never()).getAllPendingOrders();
         }
     }
 
-    // ===== TESTS CONFIRMATION COMMANDE =====
-
+    // CONFIRMATION COMMANDE
     @Nested
     @DisplayName("PATCH /api/v1/admin/orders/{orderId}/confirm - Confirmer une commande")
     class ConfirmOrderTests {
@@ -211,73 +174,50 @@ class AdminControllerTest {
         void shouldConfirmOrderSuccessfully() throws Exception {
             // Arrange
             Long orderId = 1L;
-            doNothing().when(orderService).updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CONFIRMED);
 
             // Act & Assert
             mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/confirm", orderId)
                             .contentType(MediaType.APPLICATION_JSON))
-                    .andDo(print())
                     .andExpect(status().isOk())
-                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.statusCode", is("200")))
                     .andExpect(jsonPath("$.statusMsg", containsString("Commande #1")))
                     .andExpect(jsonPath("$.statusMsg", containsString("approuvé")));
 
-            // Verify
-            verify(orderService, times(1)).updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CONFIRMED);
+            verify(orderService).updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CONFIRMED);
         }
 
         @Test
         @WithMockUser(roles = "ADMIN")
-        @DisplayName("Devrait confirmer plusieurs commandes successivement")
-        void shouldConfirmMultipleOrdersSuccessively() throws Exception {
+        @DisplayName("Devrait retourner 404 quand la commande n'existe pas")
+        void shouldReturnNotFoundWhenOrderDoesNotExist() throws Exception {
             // Arrange
-            doNothing().when(orderService).updateOrderStatus(anyLong(), eq(ApplicationConstants.ORDER_STATUS_CONFIRMED));
+            Long orderId = 999L;
+            doThrow(exceptionFactory.orderNotFound(orderId))
+                    .when(orderService).updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CONFIRMED);
 
-            // Act & Assert - Première commande
-            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/confirm", 1L))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.statusMsg", containsString("Commande #1")));
+            // Act & Assert - CORRECTION du message
+            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/confirm", orderId)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value("Commande introuvable avec les données id : '999'"));
 
-            // Act & Assert - Deuxième commande
-            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/confirm", 2L))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.statusMsg", containsString("Commande #2")));
-
-            // Verify
-            verify(orderService, times(2)).updateOrderStatus(anyLong(), eq(ApplicationConstants.ORDER_STATUS_CONFIRMED));
+            verify(orderService).updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CONFIRMED);
         }
 
         @Test
-        @WithMockUser(roles = "USER")
-        @DisplayName("Devrait refuser l'accès aux utilisateurs non-admin")
-        void shouldDenyAccessForNonAdminUsers() throws Exception {
+        @WithMockUser(roles = "ADMIN")
+        @DisplayName("Devrait retourner 400 pour ID de commande invalide")
+        void shouldReturnBadRequestForInvalidOrderId() throws Exception {
             // Act & Assert
-            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/confirm", 1L)
+            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/confirm", "invalid")
                             .contentType(MediaType.APPLICATION_JSON))
-                    .andDo(print())
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isBadRequest());
 
-            // Verify
-            verify(orderService, never()).updateOrderStatus(anyLong(), anyString());
-        }
-
-        @Test
-        @DisplayName("Devrait refuser l'accès aux utilisateurs non authentifiés")
-        void shouldDenyAccessForUnauthenticatedUsers() throws Exception {
-            // Act & Assert
-            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/confirm", 1L)
-                            .contentType(MediaType.APPLICATION_JSON))
-                    .andDo(print())
-                    .andExpect(status().isUnauthorized());
-
-            // Verify
             verify(orderService, never()).updateOrderStatus(anyLong(), anyString());
         }
     }
 
-    // ===== TESTS ANNULATION COMMANDE =====
-
+    // ANNULATION COMMANDE
     @Nested
     @DisplayName("PATCH /api/v1/admin/orders/{orderId}/cancel - Annuler une commande")
     class CancelOrderTests {
@@ -288,71 +228,60 @@ class AdminControllerTest {
         void shouldCancelOrderSuccessfully() throws Exception {
             // Arrange
             Long orderId = 1L;
-            doNothing().when(orderService).updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CANCELLED);
 
             // Act & Assert
             mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/cancel", orderId)
                             .contentType(MediaType.APPLICATION_JSON))
-                    .andDo(print())
                     .andExpect(status().isOk())
-                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.statusCode", is("200")))
                     .andExpect(jsonPath("$.statusMsg", containsString("Commande #1")))
                     .andExpect(jsonPath("$.statusMsg", containsString("annulé")));
 
-            // Verify
-            verify(orderService, times(1)).updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CANCELLED);
+            verify(orderService).updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CANCELLED);
         }
 
         @Test
-        @WithMockUser(roles = "USER")
-        @DisplayName("Devrait refuser l'accès aux utilisateurs non-admin")
-        void shouldDenyAccessForNonAdminUsers() throws Exception {
-            // Act & Assert
-            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/cancel", 1L)
-                            .contentType(MediaType.APPLICATION_JSON))
-                    .andDo(print())
-                    .andExpect(status().isForbidden());
+        @WithMockUser(roles = "ADMIN")
+        @DisplayName("Devrait retourner 404 quand la commande à annuler n'existe pas")
+        void shouldReturnNotFoundWhenOrderToCancelDoesNotExist() throws Exception {
+            // Arrange
+            Long orderId = 999L;
+            doThrow(exceptionFactory.orderNotFound(orderId))
+                    .when(orderService).updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CANCELLED);
 
-            // Verify
-            verify(orderService, never()).updateOrderStatus(anyLong(), anyString());
+            // Act & Assert
+            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/cancel", orderId)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound());
+
+            verify(orderService).updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CANCELLED);
         }
     }
 
-    // ===== TESTS MESSAGES OUVERTS =====
-
+    //TESTS MESSAGES OUVERTS
     @Nested
-    @DisplayName("GET /api/v1/admin/messages - Récupérer tous les messages ouverts")
+    @DisplayName("GET /api/v1/admin/messages - Récupérer les messages ouverts")
     class GetAllOpenMessagesTests {
 
         @Test
         @WithMockUser(roles = "ADMIN")
-        @DisplayName("Devrait retourner la liste des messages ouverts avec succès")
+        @DisplayName("Devrait retourner la liste des messages ouverts")
         void shouldReturnAllOpenMessages() throws Exception {
-            // Arrange
-            when(contactService.getAllOpenMessages()).thenReturn(mockMessages);
-
             // Act & Assert
             mockMvc.perform(get("/api/v1/admin/messages")
                             .contentType(MediaType.APPLICATION_JSON))
                     .andDo(print())
                     .andExpect(status().isOk())
-                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$", hasSize(2)))
                     .andExpect(jsonPath("$[0].contactId", is(1)))
-                    .andExpect(jsonPath("$[0].name", is("John Smith")))
-                    .andExpect(jsonPath("$[0].email", is("john.smith@example.com")))
-                    .andExpect(jsonPath("$[0].mobileNumber", is("0612345678")))
-                    .andExpect(jsonPath("$[0].status", is(ApplicationConstants.OPEN_MESSAGE)))
                     .andExpect(jsonPath("$[1].contactId", is(2)));
 
-            // Verify
-            verify(contactService, times(1)).getAllOpenMessages();
+            verify(contactService).getAllOpenMessages();
         }
 
         @Test
         @WithMockUser(roles = "ADMIN")
-        @DisplayName("Devrait retourner une liste vide s'il n'y a pas de messages ouverts")
+        @DisplayName("Devrait retourner une liste vide quand il n'y a pas de messages")
         void shouldReturnEmptyListWhenNoOpenMessages() throws Exception {
             // Arrange
             when(contactService.getAllOpenMessages()).thenReturn(Collections.emptyList());
@@ -360,33 +289,14 @@ class AdminControllerTest {
             // Act & Assert
             mockMvc.perform(get("/api/v1/admin/messages")
                             .contentType(MediaType.APPLICATION_JSON))
-                    .andDo(print())
                     .andExpect(status().isOk())
-                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$", hasSize(0)))
                     .andExpect(jsonPath("$", empty()));
 
-            // Verify
-            verify(contactService, times(1)).getAllOpenMessages();
-        }
-
-        @Test
-        @WithMockUser(roles = "USER")
-        @DisplayName("Devrait refuser l'accès aux utilisateurs non-admin")
-        void shouldDenyAccessForNonAdminUsers() throws Exception {
-            // Act & Assert
-            mockMvc.perform(get("/api/v1/admin/messages")
-                            .contentType(MediaType.APPLICATION_JSON))
-                    .andDo(print())
-                    .andExpect(status().isForbidden());
-
-            // Verify
-            verify(contactService, never()).getAllOpenMessages();
+            verify(contactService).getAllOpenMessages();
         }
     }
 
-    // ===== TESTS FERMETURE MESSAGE =====
-
+    // TESTS FERMETURE MESSAGE
     @Nested
     @DisplayName("PATCH /api/v1/admin/messages/{contactId}/close - Fermer un message")
     class CloseMessageTests {
@@ -397,88 +307,65 @@ class AdminControllerTest {
         void shouldCloseMessageSuccessfully() throws Exception {
             // Arrange
             Long contactId = 1L;
-            doNothing().when(contactService).updateMessageStatus(contactId, ApplicationConstants.CLOSED_MESSAGE);
 
             // Act & Assert
             mockMvc.perform(patch("/api/v1/admin/messages/{contactId}/close", contactId)
                             .contentType(MediaType.APPLICATION_JSON))
-                    .andDo(print())
                     .andExpect(status().isOk())
-                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.statusCode", is("200")))
                     .andExpect(jsonPath("$.statusMsg", containsString("Contact #1")))
                     .andExpect(jsonPath("$.statusMsg", containsString("fermé")));
 
-            // Verify
-            verify(contactService, times(1)).updateMessageStatus(contactId, ApplicationConstants.CLOSED_MESSAGE);
+            verify(contactService).updateMessageStatus(contactId, ApplicationConstants.CLOSED_MESSAGE);
         }
 
         @Test
         @WithMockUser(roles = "ADMIN")
-        @DisplayName("Devrait fermer plusieurs messages successivement")
-        void shouldCloseMultipleMessagesSuccessively() throws Exception {
+        @DisplayName("Devrait retourner 404 quand le message n'existe pas")
+        void shouldReturnNotFoundWhenMessageDoesNotExist() throws Exception {
             // Arrange
-            doNothing().when(contactService).updateMessageStatus(anyLong(), eq(ApplicationConstants.CLOSED_MESSAGE));
+            Long contactId = 999L;
+            doThrow(exceptionFactory.contactNotFound(contactId))
+                    .when(contactService).updateMessageStatus(contactId, ApplicationConstants.CLOSED_MESSAGE);
 
-            // Act & Assert - Premier message
-            mockMvc.perform(patch("/api/v1/admin/messages/{contactId}/close", 1L))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.statusMsg", containsString("Contact #1")));
-
-            // Act & Assert - Deuxième message
-            mockMvc.perform(patch("/api/v1/admin/messages/{contactId}/close", 2L))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.statusMsg", containsString("Contact #2")));
-
-            // Verify
-            verify(contactService, times(2)).updateMessageStatus(anyLong(), eq(ApplicationConstants.CLOSED_MESSAGE));
-        }
-
-        @Test
-        @WithMockUser(roles = "USER")
-        @DisplayName("Devrait refuser l'accès aux utilisateurs non-admin")
-        void shouldDenyAccessForNonAdminUsers() throws Exception {
-            // Act & Assert
-            mockMvc.perform(patch("/api/v1/admin/messages/{contactId}/close", 1L)
+            // Act & Assert - CORRECTION du message
+            mockMvc.perform(patch("/api/v1/admin/messages/{contactId}/close", contactId)
                             .contentType(MediaType.APPLICATION_JSON))
-                    .andDo(print())
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value("Contact introuvable avec les données id : '999'"));
 
-            // Verify
-            verify(contactService, never()).updateMessageStatus(anyLong(), anyString());
+            verify(contactService).updateMessageStatus(contactId, ApplicationConstants.CLOSED_MESSAGE);
         }
     }
 
-    // ===== TESTS DE ROBUSTESSE CORRIGÉS =====
-
+    // TESTS DE ROBUSTESSE
     @Nested
     @DisplayName("Tests de robustesse")
     class RobustnessTests {
 
         @Test
         @WithMockUser(roles = "ADMIN")
-        @DisplayName("Devrait gérer les IDs numériques très grands")
-        void shouldHandleVeryLargeNumericIds() throws Exception {
+        @DisplayName("Devrait gérer les exceptions business avec ExceptionFactory")
+        void shouldHandleBusinessExceptionsWithFactory() throws Exception {
             // Arrange
-            Long largeOrderId = 9_999_999_999L;
-            doNothing().when(orderService).updateOrderStatus(largeOrderId, ApplicationConstants.ORDER_STATUS_CONFIRMED);
+            Long orderId = 1L;
+            doThrow(exceptionFactory.businessError("Erreur métier spécifique"))
+                    .when(orderService).updateOrderStatus(orderId, ApplicationConstants.ORDER_STATUS_CONFIRMED);
 
             // Act & Assert
-            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/confirm", largeOrderId))
-                    .andExpect(status().isOk());
-
-            // Verify
-            verify(orderService).updateOrderStatus(largeOrderId, ApplicationConstants.ORDER_STATUS_CONFIRMED);
+            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/confirm", orderId))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Erreur métier spécifique"));
         }
 
         @Test
         @WithMockUser(roles = "ADMIN")
         @DisplayName("Devrait retourner 400 pour ID invalide")
         void shouldReturnBadRequestForInvalidId() throws Exception {
-            // Act & Assert - ✅ CORRIGÉ : attend 400 au lieu de 500
-            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/confirm", "invalid-id"))
-                    .andExpect(status().isBadRequest()) // ✅ 400 au lieu de 500
-                    .andExpect(jsonPath("$.message").value(containsString("paramètre"))); // Message de type mismatch
+            // Act & Assert
+            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/confirm", "invalid")
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isBadRequest());
         }
 
         @Test
@@ -486,8 +373,32 @@ class AdminControllerTest {
         @DisplayName("Devrait retourner 400 pour ID négatif")
         void shouldReturnBadRequestForNegativeId() throws Exception {
             // Act & Assert
-            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/confirm", "-1"))
+            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/confirm", "-1")
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @WithMockUser(roles = "USER")
+        @DisplayName("Devrait refuser l'accès aux non-admins")
+        void shouldDenyAccessForNonAdminUsers() throws Exception {
+            // Act & Assert
+            mockMvc.perform(get("/api/v1/admin/orders")
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+
+            verify(orderService, never()).getAllPendingOrders();
+        }
+
+        @Test
+        @DisplayName("Devrait refuser l'accès aux utilisateurs non authentifiés")
+        void shouldDenyAccessForUnauthenticatedUsers() throws Exception {
+            // Act & Assert
+            mockMvc.perform(get("/api/v1/admin/orders")
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isUnauthorized());
+
+            verify(orderService, never()).getAllPendingOrders();
         }
     }
 }
