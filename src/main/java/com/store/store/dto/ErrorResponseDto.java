@@ -96,4 +96,8 @@ public class ErrorResponseDto {
                                                        String path, String traceId) {
         return of(HttpStatus.INTERNAL_SERVER_ERROR, errorCode, message, path, traceId);
     }
+
+    public static ErrorResponseDto unauthorized(String errorCode, String message, String path) {
+        return of(HttpStatus.UNAUTHORIZED, errorCode, message, path);
+    }
 }

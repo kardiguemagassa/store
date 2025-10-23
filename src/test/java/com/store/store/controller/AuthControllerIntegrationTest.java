@@ -12,6 +12,7 @@ import com.store.store.util.TestDataBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -20,14 +21,13 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
-
-import static org.hamcrest.Matchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
@@ -39,332 +39,327 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @Transactional
 @Slf4j
-@DisplayName("Tests d'Intégration - AuthController")
+@DisplayName("Tests d'Intégration - Flux d'Authentification")
 class AuthControllerIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private CustomerRepository customerRepository;
-
-    @Autowired
-    private RoleRepository roleRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private JwtUtil jwtUtil;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private ObjectMapper objectMapper;
+    @Autowired private CustomerRepository customerRepository;
+    @Autowired private RoleRepository roleRepository;
+    @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private JwtUtil jwtUtil;
 
     private Role userRole;
-    private Customer existingCustomer;
+
+    private static final String STRONG_TEST_PASSWORD = "V3ry$tr0ngP@ss1!"; // 16 caractères
+    private static final String ANOTHER_STRONG_PASSWORD = "M@sterP@ss123!"; // 14 caractères
 
     @BeforeEach
     void setUp() {
-        // Nettoyer la base de données
         customerRepository.deleteAll();
         roleRepository.deleteAll();
 
-        // ✅ Créer le rôle USER avec TestDataBuilder
         userRole = TestDataBuilder.createRoleEntity("ROLE_USER");
         userRole = roleRepository.save(userRole);
-
-        // ✅ Créer un customer existant avec TestDataBuilder
-        existingCustomer = TestDataBuilder.createCustomer(null, "Existing", "User", "existing@example.com");
-        existingCustomer.setMobileNumber("0612345678");
-        existingCustomer.setPasswordHash(passwordEncoder.encode("password123"));
-        existingCustomer.setRoles(Set.of(userRole));
-        existingCustomer = customerRepository.save(existingCustomer);
-
-        log.info("✅ Données de test créées : User role, Existing customer");
     }
 
-    // ==================== TESTS LOGIN ====================
+    // SCÉNARIOS MÉTIER PRINCIPAUX
+    @Nested
+    @DisplayName("Scénario complet d'inscription et connexion")
+    class CompleteRegistrationLoginFlow {
 
-    @Test
-    @DisplayName("Devrait connecter un utilisateur existant et générer un vrai JWT")
-    void shouldLoginExistingUserAndGenerateRealJwt() throws Exception {
-        // Given
-        LoginRequestDto loginRequest = new LoginRequestDto("existing@example.com", "password123");
+        @Test
+        @DisplayName("Devrait permettre l'inscription, la persistance et la connexion d'un nouvel utilisateur")
+        void shouldRegisterPersistAndLoginNewUser() throws Exception {
+            // Phase 1: INSCRIPTION
+            RegisterRequestDto registerRequest = new RegisterRequestDto();
+            registerRequest.setName("John Doe");
+            registerRequest.setEmail("john.doe@example.com");
+            registerRequest.setMobileNumber("0612345678");
+            registerRequest.setPassword(STRONG_TEST_PASSWORD); // ← MOT DE PASSE FORT
 
-        // When & Then
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andDo(print())
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message", is("OK")))
-                .andExpect(jsonPath("$.user.email", is("existing@example.com")))
-                .andExpect(jsonPath("$.user.name", is("Existing User")))
-                .andExpect(jsonPath("$.user.roles", containsString("ROLE_USER")))
-                .andExpect(jsonPath("$.jwtToken", notNullValue()))
-                .andExpect(jsonPath("$.jwtToken", not(emptyString())));
+            mockMvc.perform(post("/api/v1/auth/register")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(registerRequest)))
+                    .andExpect(status().isCreated())
+                    .andExpect(content().string("Inscription réussie"));
 
-        log.info("✅ Login réussi avec JWT valide");
+            // Vérification en base de données
+            Customer savedCustomer = customerRepository.findByEmail("john.doe@example.com")
+                    .orElseThrow(() -> new AssertionError("Utilisateur devrait être persisté"));
+
+            assertThat(savedCustomer.getName()).isEqualTo("John Doe");
+            assertThat(savedCustomer.getRoles()).hasSize(1);
+            assertThat(passwordEncoder.matches(STRONG_TEST_PASSWORD, savedCustomer.getPasswordHash())).isTrue();
+
+            // Phase 2: CONNEXION
+            LoginRequestDto loginRequest = new LoginRequestDto("john.doe@example.com", STRONG_TEST_PASSWORD);
+
+            MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(loginRequest)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.jwtToken").exists())
+                    .andReturn();
+
+            // Phase 3: VALIDATION JWT
+            String responseBody = loginResult.getResponse().getContentAsString();
+            String token = objectMapper.readTree(responseBody).get("jwtToken").asText();
+
+            assertThat(jwtUtil.validateJwtToken(token)).isTrue();
+            assertThat(jwtUtil.getEmailFromJwtToken(token)).isEqualTo("john.doe@example.com");
+
+            log.info("Scénario complet: inscription -> persistance -> connexion -> JWT valide");
+        }
     }
 
-    @Test
-    @DisplayName("Devrait rejeter la connexion avec un mauvais mot de passe")
-    void shouldRejectLoginWithWrongPassword() throws Exception {
-        // Given
-        LoginRequestDto loginRequest = new LoginRequestDto("existing@example.com", "wrongpassword");
+    @Nested
+    @DisplayName("Scénarios de sécurité d'authentification")
+    class AuthenticationSecurityScenarios {
 
-        // When & Then
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andDo(print())
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message", is("Nom d'utilisateur ou mot de passe invalide")))
-                .andExpect(jsonPath("$.user").doesNotExist())
-                .andExpect(jsonPath("$.jwtToken").doesNotExist());
+        private Customer existingUser;
 
-        log.info("✅ Connexion rejetée pour mauvais mot de passe");
+        @BeforeEach
+        void setUpSecurityScenario() {
+            // Créer un utilisateur existant pour les tests de sécurité
+            existingUser = TestDataBuilder.createCustomer(null, "Existing", "User", "security@example.com");
+            existingUser.setMobileNumber("0698765432");
+            existingUser.setPasswordHash(passwordEncoder.encode(STRONG_TEST_PASSWORD));
+            existingUser.setRoles(Set.of(userRole));
+            customerRepository.save(existingUser);
+        }
+
+        @Test
+        @DisplayName("Devrait rejeter les credentials d'authentification invalides")
+        void shouldRejectInvalidCredentials() throws Exception {
+            // Tests 401 Unauthorized - Authentification
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    new LoginRequestDto("security@example.com", "wrongpassword"))))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.message").value("Nom d'utilisateur ou mot de passe invalide"));
+
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    new LoginRequestDto("nonexistent@example.com", "anypassword"))))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.message").value("Nom d'utilisateur ou mot de passe invalide"));
+        }
+
+        @Test
+        @DisplayName("Devrait rejeter les requêtes de login avec validation échouée")
+        void shouldRejectLoginRequestsWithFailedValidation() throws Exception {
+            // Tests 400 Bad Request - Validation
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"username\": \"invalid-email\", \"password\": \"anypassword\"}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.username").exists());
+        }
+
+        @Test
+        @DisplayName("Devrait générer des JWTs valides et distincts pour chaque connexion")
+        void shouldGenerateValidDistinctJwtsForEachLogin() throws Exception {
+            LoginRequestDto loginRequest = new LoginRequestDto("security@example.com", STRONG_TEST_PASSWORD);
+
+            // Première connexion
+            MvcResult result1 = mockMvc.perform(post("/api/v1/auth/login")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(loginRequest)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.jwtToken").exists())
+                    .andReturn();
+
+            String jwt1 = objectMapper.readTree(result1.getResponse().getContentAsString())
+                    .get("jwtToken").asText();
+
+            // Délai pour garantir des JWTs différents
+            Thread.sleep(1000);
+
+            // Seconde connexion
+            MvcResult result2 = mockMvc.perform(post("/api/v1/auth/login")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(loginRequest)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.jwtToken").exists())
+                    .andReturn();
+
+            String jwt2 = objectMapper.readTree(result2.getResponse().getContentAsString())
+                    .get("jwtToken").asText();
+
+            // Vérifications
+            assertThat(jwtUtil.validateJwtToken(jwt1)).isTrue();
+            assertThat(jwtUtil.validateJwtToken(jwt2)).isTrue();
+            assertThat(jwt1).isNotEqualTo(jwt2);
+            assertThat(jwtUtil.getEmailFromJwtToken(jwt1)).isEqualTo("security@example.com");
+            assertThat(jwtUtil.getEmailFromJwtToken(jwt2)).isEqualTo("security@example.com");
+
+            log.info("JWTs valides et distincts générés pour chaque connexion");
+        }
     }
 
-    @Test
-    @DisplayName("Devrait rejeter la connexion pour un utilisateur inexistant")
-    void shouldRejectLoginForNonExistentUser() throws Exception {
-        // Given
-        LoginRequestDto loginRequest = new LoginRequestDto("nonexistent@example.com", "password123");
+    @Nested
+    @DisplayName("Scénarios de validation d'inscription")
+    class RegistrationValidationScenarios {
 
-        // When & Then
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andDo(print())
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message", is("Nom d'utilisateur ou mot de passe invalide")));
+        @Test
+        @DisplayName("Devrait rejeter les inscriptions avec des données dupliquées ou invalides")
+        void shouldRejectInvalidOrDuplicateRegistrations() throws Exception {
+            // Créer un utilisateur existant pour tester les doublons
+            Customer existing = TestDataBuilder.createCustomer(null, "Existing", "User", "duplicate@example.com");
+            existing.setMobileNumber("0612345678");
+            existing.setPasswordHash(passwordEncoder.encode(STRONG_TEST_PASSWORD));
+            existing.setRoles(Set.of(userRole));
+            customerRepository.save(existing);
 
-        log.info("✅ Connexion rejetée pour utilisateur inexistant");
+            // Tentative 1: Email dupliqué
+            mockMvc.perform(post("/api/v1/auth/register")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createRegisterRequest(
+                                    "New User", "duplicate@example.com", "0698765432", ANOTHER_STRONG_PASSWORD))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.email").value("L'e-mail est déjà enregistré"));
+
+            // Tentative 2: Téléphone dupliqué
+            mockMvc.perform(post("/api/v1/auth/register")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createRegisterRequest(
+                                    "New User", "new@example.com", "0612345678", ANOTHER_STRONG_PASSWORD))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.mobileNumber").value("Le numéro de téléphone portable est déjà enregistré"));
+
+            // Tentative 3: Mot de passe faible
+            mockMvc.perform(post("/api/v1/auth/register")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(createRegisterRequest(
+                                    "New User", "weakpass@example.com", "0634567890", "weak"))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.password").exists());
+
+            log.info("Toutes les validations d'inscription fonctionnent correctement");
+        }
+
+        @Test
+        @DisplayName("Devrait encoder correctement les mots de passe et assigner les rôles")
+        void shouldEncodePasswordsAndAssignRolesCorrectly() throws Exception {
+            RegisterRequestDto request = createRegisterRequest(
+                    "Test User", "encoder@example.com", "0678901234", STRONG_TEST_PASSWORD);
+
+            mockMvc.perform(post("/api/v1/auth/register")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isCreated());
+
+            Customer saved = customerRepository.findByEmail("encoder@example.com")
+                    .orElseThrow();
+
+            // Vérification de l'encodage
+            assertThat(saved.getPasswordHash()).startsWith("$2a$");
+            assertThat(passwordEncoder.matches(STRONG_TEST_PASSWORD, saved.getPasswordHash())).isTrue();
+            assertThat(saved.getPasswordHash()).isNotEqualTo(STRONG_TEST_PASSWORD);
+
+            // Vérification du rôle
+            assertThat(saved.getRoles())
+                    .extracting(Role::getName)
+                    .containsExactly("ROLE_USER");
+
+            log.info("Mot de passe encodé et rôle assigné correctement");
+        }
+
+        @Test
+        @DisplayName("Devrait rejeter les mots de passe compromis avec 400")
+        void shouldRejectCompromisedPasswords() throws Exception {
+            RegisterRequestDto request = createRegisterRequest(
+                    "Test User", "compromised@example.com", "0634567890", "password123");
+
+            mockMvc.perform(post("/api/v1/auth/register")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.password").exists());
+        }
     }
 
-    // ==================== TESTS REGISTER ====================
+    @Nested
+    @DisplayName("Scénarios de validation d'entrée")
+    class InputValidationScenarios {
 
-    @Test
-    @DisplayName("Devrait enregistrer un nouvel utilisateur et le persister en base")
-    void shouldRegisterNewUserAndPersistToDatabase() throws Exception {
-        // Given
-        RegisterRequestDto registerRequest = new RegisterRequestDto();
-        registerRequest.setName("New User");
-        registerRequest.setEmail("newuser@example.com");
-        registerRequest.setMobileNumber("0698765432");
-        registerRequest.setPassword("Xk9#mP$vL2qR!");  // ✅ Mot de passe plus complexe
+        @Test
+        @DisplayName("Devrait rejeter les emails invalides avec 400")
+        void shouldRejectInvalidEmails() throws Exception {
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    new LoginRequestDto("invalid-email", "anypassword"))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.username").exists());
+        }
 
-        // When
-        mockMvc.perform(post("/api/v1/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registerRequest)))
-                .andDo(print())
-                .andExpect(status().isCreated())
-                .andExpect(content().string("Inscription réussie"));
-
-        // Then - Vérifier que l'utilisateur est bien en base
-        Customer savedCustomer = customerRepository.findByEmail("newuser@example.com").orElseThrow();
-
-        assert savedCustomer.getName().equals("New User");
-        assert savedCustomer.getEmail().equals("newuser@example.com");
-        assert savedCustomer.getMobileNumber().equals("0698765432");
-        assert savedCustomer.getRoles().stream()
-                .anyMatch(role -> role.getName().equals("ROLE_USER"));
-
-        // Vérifier que le mot de passe est encodé
-        assert passwordEncoder.matches("Xk9#mP$vL2qR!", savedCustomer.getPasswordHash());
-
-        log.info("✅ Nouvel utilisateur enregistré et persisté en base");
+        @Test
+        @DisplayName("Devrait rejeter les champs manquants avec 400")
+        void shouldRejectMissingFields() throws Exception {
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.username").exists())
+                    .andExpect(jsonPath("$.errors.password").exists());
+        }
     }
 
-    @Test
-    @DisplayName("Devrait rejeter l'inscription avec un email déjà enregistré")
-    void shouldRejectRegistrationWithDuplicateEmail() throws Exception {
-        // Given
-        RegisterRequestDto registerRequest = new RegisterRequestDto();
-        registerRequest.setName("Another User");
-        registerRequest.setEmail("existing@example.com");
-        registerRequest.setMobileNumber("0698765432");
-        registerRequest.setPassword("Yz7&nQ!pW3tK@");  // ✅ Mot de passe plus complexe
+    @Nested
+    @DisplayName("Scénarios d'authentification")
+    class AuthenticationScenarios {
 
-        // When & Then
-        mockMvc.perform(post("/api/v1/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registerRequest)))
-                .andDo(print())
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.email", is("L'e-mail est déjà enregistré")));
+        @Test
+        @DisplayName("Devrait rejeter les mauvais mots de passe avec 401")
+        void shouldRejectWrongPasswords() throws Exception {
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    new LoginRequestDto("security@example.com", "wrongpassword"))))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.errorCode").value("INVALID_CREDENTIALS"));
+        }
 
-        log.info("✅ Inscription rejetée pour email dupliqué");
+        @Test
+        @DisplayName("Devrait rejeter les utilisateurs inexistants avec 401")
+        void shouldRejectNonExistentUsers() throws Exception {
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(
+                                    new LoginRequestDto("ghost@example.com", "anypassword"))))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.errorCode").value("INVALID_CREDENTIALS"));
+        }
     }
 
-    @Test
-    @DisplayName("Devrait rejeter l'inscription avec un numéro de téléphone déjà enregistré")
-    void shouldRejectRegistrationWithDuplicateMobileNumber() throws Exception {
-        // Given
-        RegisterRequestDto registerRequest = new RegisterRequestDto();
-        registerRequest.setName("Another User");
-        registerRequest.setEmail("newuser@example.com");
-        registerRequest.setMobileNumber("0612345678");
-        registerRequest.setPassword("Hf4$bN@mT8vL!");  // ✅ Mot de passe plus complexe
 
-        // When & Then
-        mockMvc.perform(post("/api/v1/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registerRequest)))
-                .andDo(print())
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.mobileNumber",
-                        is("Le numéro de téléphone portable est déjà enregistré")));
-
-        log.info("✅ Inscription rejetée pour numéro de téléphone dupliqué");
-    }
-
-    @Test
-    @DisplayName("Devrait rejeter un mot de passe faible")
-    void shouldRejectWeakPassword() throws Exception {
-        // Given
-        RegisterRequestDto registerRequest = new RegisterRequestDto();
-        registerRequest.setName("New User");
-        registerRequest.setEmail("newuser@example.com");
-        registerRequest.setMobileNumber("0698765432");
-        registerRequest.setPassword("password123");
-
-        // When & Then
-        mockMvc.perform(post("/api/v1/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registerRequest)))
-                .andDo(print())
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.password", is("Choisissez un mot de passe fort")));
-
-        log.info("✅ Inscription rejetée pour mot de passe faible");
-    }
-
-    @Test
-    @DisplayName("Devrait vérifier que le JWT généré est valide et contient les bonnes informations")
-    void shouldGenerateValidJwtWithCorrectClaims() throws Exception {
-        // Given
-        LoginRequestDto loginRequest = new LoginRequestDto("existing@example.com", "password123");
-
-        // When
-        String responseBody = mockMvc.perform(post("/api/v1/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        // Then - Extraire et valider le JWT
-        String jwtToken = objectMapper.readTree(responseBody).get("jwtToken").asText();
-
-        // ✅ Utiliser les VRAIES méthodes de JwtUtil
-        assert jwtUtil.validateJwtToken(jwtToken) : "Le JWT devrait être valide";
-
-        String emailFromToken = jwtUtil.getEmailFromJwtToken(jwtToken);
-        assert emailFromToken.equals("existing@example.com") : "L'email devrait être 'existing@example.com'";
-
-        log.info("✅ JWT valide généré avec les bonnes informations (email: {})", emailFromToken);
-    }
-
-    @Test
-    @DisplayName("Devrait encoder correctement le mot de passe lors de l'inscription")
-    void shouldEncodePasswordDuringRegistration() throws Exception {
-        // Given
-        RegisterRequestDto registerRequest = new RegisterRequestDto();
-        registerRequest.setName("Test User");
-        registerRequest.setEmail("testuser@example.com");
-        registerRequest.setMobileNumber("0687654321");
-        registerRequest.setPassword("MySecureP@ssw0rd!");
-
-        // When
-        mockMvc.perform(post("/api/v1/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registerRequest)))
-                .andExpect(status().isCreated());
-
-        // Then
-        Customer savedCustomer = customerRepository.findByEmail("testuser@example.com").orElseThrow();
-
-        // Le hash ne doit PAS être le mot de passe en clair
-        assert !savedCustomer.getPasswordHash().equals("MySecureP@ssw0rd!");
-
-        // Le hash doit commencer par $2a$ (BCrypt)
-        assert savedCustomer.getPasswordHash().startsWith("$2a$");
-
-        // Le mot de passe doit matcher avec l'encoder
-        assert passwordEncoder.matches("MySecureP@ssw0rd!", savedCustomer.getPasswordHash());
-
-        log.info("✅ Mot de passe correctement encodé avec BCrypt");
-    }
-
-    @Test
-    @DisplayName("Devrait assigner automatiquement le rôle USER lors de l'inscription")
-    void shouldAutoAssignUserRoleDuringRegistration() throws Exception {
-        // Given
-        RegisterRequestDto registerRequest = new RegisterRequestDto();
-        registerRequest.setName("Role Test User");
-        registerRequest.setEmail("roletest@example.com");
-        registerRequest.setMobileNumber("0676543210");
-        registerRequest.setPassword("Gr5#kV$xM9qZ!");  // ✅ Mot de passe plus complexe
-
-        // When
-        mockMvc.perform(post("/api/v1/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registerRequest)))
-                .andExpect(status().isCreated());
-
-        // Then
-        Customer savedCustomer = customerRepository.findByEmail("roletest@example.com").orElseThrow();
-
-        assert savedCustomer.getRoles().size() == 1;
-        assert savedCustomer.getRoles().stream()
-                .anyMatch(role -> role.getName().equals("ROLE_USER"));
-
-        log.info("✅ Rôle USER automatiquement assigné");
-    }
-
-    @Test
-    @DisplayName("Devrait vérifier que le JWT contient tous les claims nécessaires")
-    void shouldContainAllRequiredClaimsInJwt() throws Exception {
-        // Given
-        LoginRequestDto loginRequest = new LoginRequestDto("existing@example.com", "password123");
-
-        // When
-        String responseBody = mockMvc.perform(post("/api/v1/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        // Then
-        String jwtToken = objectMapper.readTree(responseBody).get("jwtToken").asText();
-
-        // Valider le token
-        assert jwtUtil.validateJwtToken(jwtToken);
-
-        // Extraire l'email
-        String email = jwtUtil.getEmailFromJwtToken(jwtToken);
-        assert email.equals("existing@example.com");
-
-        // Le token devrait contenir les informations de base
-        assert jwtToken.split("\\.").length == 3 : "Le JWT devrait avoir 3 parties (header.payload.signature)";
-
-        log.info("✅ JWT contient tous les claims requis et est structuré correctement");
+    // MÉTHODES UTILITAIRES
+    private RegisterRequestDto createRegisterRequest(String name, String email, String mobile, String password) {
+        RegisterRequestDto request = new RegisterRequestDto();
+        request.setName(name);
+        request.setEmail(email);
+        request.setMobileNumber(mobile);
+        request.setPassword(password);
+        return request;
     }
 }

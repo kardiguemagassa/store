@@ -54,4 +54,18 @@ public class ExceptionFactory {
         log.debug("Creating BusinessException: {}", message, cause);
         return new BusinessException(message, cause);
     }
+
+    // CONFIGURATION EXCEPTIONS
+    public ConfigurationException configurationError(String message) {
+        log.error("Creating ConfigurationException: {}", message);
+        return new ConfigurationException(message);
+    }
+
+    public ConfigurationException missingRole(String roleName) {
+        return configurationError(String.format("Le rôle '%s' n'est pas configuré dans le système", roleName));
+    }
+
+    public ConfigurationException missingConfiguration(String configKey) {
+        return configurationError(String.format("La configuration '%s' est manquante", configKey));
+    }
 }
