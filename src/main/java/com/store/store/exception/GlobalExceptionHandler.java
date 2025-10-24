@@ -16,11 +16,14 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 
 import java.util.Locale;
@@ -171,37 +174,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errorResponse);
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponseDto> handleGlobalException(
-            Exception exception, WebRequest webRequest) {
-
-        String path = extractPath(webRequest);
-        String traceId = generateTraceId();
-
-        // Réduire le bruit pour les tests
-        boolean isExpectedTestException =
-                exception.getMessage() != null && (
-                        exception.getMessage().contains("Authentication service unavailable") ||
-                                exception.getMessage().contains("Erreur de configuration du système")
-                );
-
-        if (!isExpectedTestException) {
-            log.error("Unexpected error at path: {} - TraceId: {} - Error: {}",
-                    path, traceId, exception.getMessage(), exception);
-        } else {
-            log.debug("Expected test exception: {} - Path: {}", exception.getMessage(), path);
-        }
-
-        ErrorResponseDto errorResponse = ErrorResponseDto.internalServerError(
-                ErrorCodes.INTERNAL_ERROR,
-                getLocalizedMessage("error.internal.server"),
-                path,
-                traceId
-        );
-
-        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponseDto> handleHttpMessageNotReadable(
             HttpMessageNotReadableException exception, WebRequest webRequest) {
@@ -277,6 +249,92 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, status);
     }
 
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponseDto> handleHttpMediaTypeNotSupported(
+            HttpMediaTypeNotSupportedException exception, WebRequest webRequest) {
+
+        String path = extractPath(webRequest);
+        log.warn("Unsupported media type for path: {} - Content-Type: {}", path, exception.getContentType());
+
+        String errorMessage = getLocalizedMessage("validation.unsupported.media.type");
+
+        ErrorResponseDto errorResponse = ErrorResponseDto.unsupportedMediaType(
+                ErrorCodes.UNSUPPORTED_MEDIA_TYPE,
+                errorMessage,
+                path
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    // Gestion des méthodes HTTP non supportées
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponseDto> handleHttpRequestMethodNotSupported(
+            HttpRequestMethodNotSupportedException exception, WebRequest webRequest) {
+
+        String path = extractPath(webRequest);
+        log.warn("HTTP method not supported for path: {} - Method: {}",
+                path, exception.getMethod());
+
+        String errorMessage = getLocalizedMessage("error.method.not.supported");
+
+        ErrorResponseDto errorResponse = ErrorResponseDto.methodNotAllowed(
+                ErrorCodes.METHOD_NOT_ALLOWED,
+                errorMessage,
+                path
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.METHOD_NOT_ALLOWED);
+    }
+
+    // Gestion des ressources non trouvées (NoResourceFoundException)
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponseDto> handleNoResourceFound(
+            NoResourceFoundException exception, WebRequest webRequest) {
+
+        String path = extractPath(webRequest);
+        log.warn("Resource not found: {} - Path: {}", exception.getResourcePath(), path);
+
+        ErrorResponseDto errorResponse = ErrorResponseDto.notFound(
+                ErrorCodes.RESOURCE_NOT_FOUND,
+                getLocalizedMessage("error.page.not.found"),
+                path
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponseDto> handleGlobalException(
+            Exception exception, WebRequest webRequest) {
+
+        String path = extractPath(webRequest);
+        String traceId = generateTraceId();
+
+        // Réduire le bruit pour les tests
+        boolean isExpectedTestException =
+                exception.getMessage() != null && (
+                        exception.getMessage().contains("Authentication service unavailable") ||
+                                exception.getMessage().contains("Erreur de configuration du système")
+                );
+
+        if (!isExpectedTestException) {
+            log.error("Unexpected error at path: {} - TraceId: {} - Error: {}",
+                    path, traceId, exception.getMessage(), exception);
+        } else {
+            log.debug("Expected test exception: {} - Path: {}", exception.getMessage(), path);
+        }
+
+        ErrorResponseDto errorResponse = ErrorResponseDto.internalServerError(
+                ErrorCodes.INTERNAL_ERROR,
+                getLocalizedMessage("error.internal.server"),
+                path,
+                traceId
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
     // Méthodes utilitaires
     private String extractPath(WebRequest webRequest) {
         if (webRequest.getDescription(false).startsWith("uri=")) {
@@ -303,7 +361,6 @@ public class GlobalExceptionHandler {
         return java.util.UUID.randomUUID().toString();
     }
 
-    // Nouvelle méthode améliorée
     private String getEnhancedValidationMessage(FieldError fieldError) {
         String fieldLabel = getFieldLabel(fieldError.getField());
         String errorCode = fieldError.getCode();

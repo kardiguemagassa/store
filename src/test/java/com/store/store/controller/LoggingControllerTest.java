@@ -30,8 +30,7 @@ class LoggingControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    // ==================== TESTS FONCTIONNELS ====================
-
+    //FONCTIONNELS
     @Test
     @DisplayName("GET /api/v1/logging - Devrait retourner un message de succès")
     @WithMockUser
@@ -59,8 +58,7 @@ class LoggingControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
 
-    // ==================== TESTS DE SÉCURITÉ ====================
-
+    //SÉCURITÉ
     @Test
     @DisplayName("GET /api/v1/logging - Devrait échouer sans authentification")
     void testLogging_WithoutAuth_ShouldReturnUnauthorized() throws Exception {
@@ -72,8 +70,7 @@ class LoggingControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    // ==================== TESTS DE COMPORTEMENT ====================
-
+    //COMPORTEMENT
     @Test
     @DisplayName("GET /api/v1/logging - Devrait avoir une réponse cohérente")
     @WithMockUser
@@ -97,7 +94,7 @@ class LoggingControllerTest {
     @DisplayName("GET /api/v1/logging - Devrait accepter différentes méthodes de contenu")
     @WithMockUser
     void testLogging_WithDifferentAcceptHeaders_ShouldWork() throws Exception {
-        // Test avec Accept: application/json - devrait fonctionner
+        //Accept: application/json
         mockMvc.perform(get("/api/v1/logging")
                         .with(csrf())
                         .header("Accept", MediaType.APPLICATION_JSON))
@@ -106,16 +103,15 @@ class LoggingControllerTest {
                 .andExpect(jsonPath("$.message").value("Logging tested successfully"))
                 .andExpect(jsonPath("$.status").value("SUCCESS"));
 
-        // Test avec Accept: text/plain - devrait retourner 406 Not Acceptable
+        //Accept: text/plain - devrait retourner 406 Not Acceptable
         // car le controller ne supporte que JSON
         mockMvc.perform(get("/api/v1/logging")
                         .with(csrf())
                         .header("Accept", MediaType.TEXT_PLAIN))
-                .andExpect(status().isNotAcceptable()); // ✅ Changé ici - 406 au lieu de 200
+                .andExpect(status().isNotAcceptable());
     }
 
-    // ==================== TESTS DE PERFORMANCE ====================
-
+    //PERFORMANCE
     @Test
     @DisplayName("GET /api/v1/logging - Devrait répondre rapidement")
     @WithMockUser
@@ -132,8 +128,7 @@ class LoggingControllerTest {
         assert responseTime < 1000 : "Doit répondre en moins d'1 seconde, mais a pris " + responseTime + " ms";
     }
 
-    // ==================== TESTS DE STRUCTURE DE RÉPONSE ====================
-
+    //STRUCTURE DE RÉPONSE
     @Test
     @DisplayName("GET /api/v1/logging - La réponse doit avoir la structure JSON correcte")
     @WithMockUser
@@ -162,8 +157,7 @@ class LoggingControllerTest {
                 .andExpect(header().exists("X-Frame-Options"));
     }
 
-    // ==================== TESTS DE RÉUTILISABILITÉ ====================
-
+    //RÉUTILISABILITÉ
     @Test
     @DisplayName("GET /api/v1/logging - Appels multiples successifs")
     @WithMockUser
@@ -177,11 +171,10 @@ class LoggingControllerTest {
                     .andExpect(jsonPath("$.status").value("SUCCESS"));
         }
 
-        log.info("✅ 5 appels successifs au endpoint logging effectués avec succès");
+        log.info("5 appels successifs au endpoint logging effectués avec succès");
     }
 
-    // ==================== TESTS DE DÉSÉRIALISATION ====================
-
+    // DÉSÉRIALISATION
     @Test
     @DisplayName("GET /api/v1/logging - La réponse doit pouvoir être désérialisée")
     @WithMockUser
@@ -199,6 +192,6 @@ class LoggingControllerTest {
         assert responseDto.message().equals("Logging tested successfully") : "Message incorrect";
         assert responseDto.status().equals("SUCCESS") : "Status incorrect";
 
-        log.info("✅ Réponse JSON correctement désérialisée: {}", responseDto);
+        log.info("Réponse JSON correctement désérialisée: {}", responseDto);
     }
 }

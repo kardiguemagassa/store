@@ -1,6 +1,7 @@
 package com.store.store.constants;
 
 public final class ErrorCodes {
+
     private ErrorCodes() {}
 
     //VALIDATION ERRORS
@@ -27,6 +28,8 @@ public final class ErrorCodes {
     public static final String CONFIGURATION_ERROR = "CONFIGURATION_ERROR";
     public static final String EXTERNAL_SERVICE_ERROR = "EXTERNAL_SERVICE_ERROR";
     public static final String DATABASE_ERROR = "DATABASE_ERROR";
+    public static final String UNSUPPORTED_MEDIA_TYPE = "UNSUPPORTED_MEDIA_TYPE";
+    public static final String METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED";
 
     public static final String INVALID_CREDENTIALS = "INVALID_CREDENTIALS";
     public static final String ACCOUNT_DISABLED = "ACCOUNT_DISABLED";

@@ -36,12 +36,11 @@ class LoggingControllerIntegrationTest {
     private ObjectMapper objectMapper;
 
     private ListAppender<ILoggingEvent> listAppender;
-    private Logger logger;
 
     @BeforeEach
     void setUp() {
-        // Configuration pour capturer les logs du controller
-        logger = (Logger) LoggerFactory.getLogger(LoggingController.class);
+        // répare un logger technique pour capter les logs du contrôleur
+        Logger logger = (Logger) LoggerFactory.getLogger(LoggingController.class);
         listAppender = new ListAppender<>();
         listAppender.start();
         logger.addAppender(listAppender);
@@ -61,7 +60,7 @@ class LoggingControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/json"))
                 .andExpect(jsonPath("$.message").value("Logging tested successfully"))
-                .andExpect(jsonPath("$.status").value("SUCCESS")); // ✅ Changé ici
+                .andExpect(jsonPath("$.status").value("SUCCESS"));
 
         // Then - Vérifier les logs générés
         List<ILoggingEvent> logsList = listAppender.list;
@@ -130,9 +129,7 @@ class LoggingControllerIntegrationTest {
         int firstCallLogCount = listAppender.list.size();
 
         // When - Deuxième appel
-        mockMvc.perform(get("/api/v1/logging")
-                        .with(csrf()))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/logging").with(csrf())).andExpect(status().isOk());
 
         // Then - Vérifier que des logs ont été générés à chaque appel
         assertThat(listAppender.list.size())

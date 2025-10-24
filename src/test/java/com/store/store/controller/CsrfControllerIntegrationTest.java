@@ -28,8 +28,7 @@ class CsrfControllerIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
-    // ==================== TESTS FONCTIONNELS ====================
-
+    //FONCTIONNELS
     @Test
     @DisplayName("GET /api/v1/csrf-token - Devrait retourner un token CSRF valide")
     @WithMockUser
@@ -40,10 +39,10 @@ class CsrfControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").exists())
                 .andExpect(jsonPath("$.token").isString())
-                .andExpect(jsonPath("$.headerName").value("X-XSRF-TOKEN"))  // ✅ CORRIGÉ
+                .andExpect(jsonPath("$.headerName").value("X-XSRF-TOKEN"))
                 .andExpect(jsonPath("$.parameterName").value("_csrf"));
 
-        log.info("✅ Token CSRF retourné avec succès");
+        log.info("token CSRF retourné avec succès");
     }
 
     @Test
@@ -61,7 +60,7 @@ class CsrfControllerIntegrationTest {
                     assert !response.contains("null");
                 });
 
-        log.info("✅ Token CSRF non vide vérifié");
+        log.info("Token CSRF non vide vérifié");
     }
 
     @Test
@@ -74,11 +73,10 @@ class CsrfControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/json"));
 
-        log.info("✅ Content-Type JSON vérifié");
+        log.info("Content-Type JSON vérifié");
     }
 
-    // ==================== TESTS DE SÉCURITÉ ====================
-
+    //SÉCURITÉ
     @Test
     @DisplayName("GET /api/v1/csrf-token - Devrait être accessible sans authentification")
     void getCsrfToken_ShouldBeAccessibleWithoutAuth() throws Exception {
@@ -88,7 +86,7 @@ class CsrfControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").exists());
 
-        log.info("✅ Endpoint CSRF accessible publiquement");
+        log.info("Endpoint CSRF accessible publiquement");
     }
 
     @Test
@@ -100,11 +98,10 @@ class CsrfControllerIntegrationTest {
                 .andDo(print())
                 .andExpect(status().isOk());
 
-        log.info("✅ Méthode GET acceptée");
+        log.info("Méthode GET acceptée");
     }
 
-    // ==================== TESTS DE COHÉRENCE ====================
-
+    // COHÉRENCE
     @Test
     @DisplayName("GET /api/v1/csrf-token - Le token devrait être dans le cookie XSRF-TOKEN")
     @WithMockUser
@@ -113,10 +110,10 @@ class CsrfControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/csrf-token"))
                 .andDo(print())
                 .andExpect(status().isOk())
-                .andExpect(cookie().exists("XSRF-TOKEN"))  // ✅ Vérifier le cookie
+                .andExpect(cookie().exists("XSRF-TOKEN"))  // Vérifier le cookie
                 .andExpect(cookie().httpOnly("XSRF-TOKEN", false)); // Le cookie XSRF doit être accessible en JS
 
-        log.info("✅ Cookie XSRF-TOKEN configuré correctement");
+        log.info("Cookie XSRF-TOKEN configuré correctement");
     }
 
     @Test
@@ -134,9 +131,9 @@ class CsrfControllerIntegrationTest {
         assert response.contains("\"token\"");
         assert response.contains("\"headerName\"");
         assert response.contains("\"parameterName\"");
-        assert response.contains("X-XSRF-TOKEN");  // ✅ CORRIGÉ
+        assert response.contains("X-XSRF-TOKEN");
 
-        log.info("✅ Structure du token CSRF validée");
+        log.info("Structure du token CSRF validée");
     }
 
     @Test
@@ -164,8 +161,7 @@ class CsrfControllerIntegrationTest {
         log.info("✅ Génération de tokens CSRF fonctionnelle");
     }
 
-    // ==================== TESTS D'ERREUR ====================
-
+    //ERREUR
     @Test
     @DisplayName("GET /api/v1/csrf-token - Devrait retourner un token même en cas de requêtes multiples")
     @WithMockUser
@@ -177,11 +173,10 @@ class CsrfControllerIntegrationTest {
                     .andExpect(jsonPath("$.token").exists());
         }
 
-        log.info("✅ Gestion de requêtes multiples vérifiée");
+        log.info("Gestion de requêtes multiples vérifiée");
     }
 
-    // ==================== TESTS DE STRUCTURE DE RÉPONSE ====================
-
+    // STRUCTURE DE RÉPONSE
     @Test
     @DisplayName("GET /api/v1/csrf-token - La réponse devrait avoir tous les champs requis")
     @WithMockUser
@@ -198,14 +193,13 @@ class CsrfControllerIntegrationTest {
                 .andExpect(jsonPath("$.headerName").isString())
                 .andExpect(jsonPath("$.parameterName").isString())
                 // Vérifier les valeurs attendues
-                .andExpect(jsonPath("$.headerName").value("X-XSRF-TOKEN"))  // ✅ CORRIGÉ
+                .andExpect(jsonPath("$.headerName").value("X-XSRF-TOKEN"))
                 .andExpect(jsonPath("$.parameterName").value("_csrf"));
 
-        log.info("✅ Structure complète de la réponse CSRF validée");
+        log.info("Structure complète de la réponse CSRF validée");
     }
 
-    // ==================== TEST SPÉCIFIQUE FORMAT UUID ====================
-
+    // SPÉCIFIQUE FORMAT UUID
     @Test
     @DisplayName("GET /api/v1/csrf-token - Le token devrait être un UUID valide")
     @WithMockUser
@@ -218,6 +212,6 @@ class CsrfControllerIntegrationTest {
                         "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
                 )));
 
-        log.info("✅ Format UUID du token CSRF validé");
+        log.info("Format UUID du token CSRF validé");
     }
 }
