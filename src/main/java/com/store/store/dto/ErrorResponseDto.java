@@ -100,4 +100,12 @@ public class ErrorResponseDto {
     public static ErrorResponseDto unauthorized(String errorCode, String message, String path) {
         return of(HttpStatus.UNAUTHORIZED, errorCode, message, path);
     }
+
+    public static ErrorResponseDto unsupportedMediaType(String errorCode, String message, String path) {
+        return of(HttpStatus.UNSUPPORTED_MEDIA_TYPE, errorCode, message, path);
+    }
+
+    public static ErrorResponseDto methodNotAllowed(String errorCode, String message, String path) {
+        return of(HttpStatus.METHOD_NOT_ALLOWED, errorCode, message, path);
+    }
 }

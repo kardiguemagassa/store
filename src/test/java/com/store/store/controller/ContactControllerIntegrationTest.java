@@ -49,11 +49,10 @@ class ContactControllerIntegrationTest {
     @BeforeEach
     void setUp() {
         contactRepository.deleteAll();
-        log.info("✅ Configuration test terminée - Base de données nettoyée");
+        log.info("Configuration test terminée - Base de données nettoyée");
     }
 
-    // ==================== TESTS POST /api/v1/contacts ====================
-
+    //TESTS POST /api/v1/contacts
     @Test
     @DisplayName("POST /api/v1/contacts - Devrait persister le contact en base")
     @WithMockUser
@@ -65,24 +64,25 @@ class ContactControllerIntegrationTest {
         // When
         mockMvc.perform(post("/api/v1/contacts")
                         .with(csrf())
+                        .characterEncoding( "UTF-8")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))
                 .andDo(print())
                 .andExpect(status().isCreated())
-                .andExpect(content().string("Demande traitée avec succès"));
+                .andExpect(jsonPath("$.message").exists());
 
         // Then - Vérifier en base
         var contacts = contactRepository.findAll();
         assert contacts.size() == 1;
 
-        Contact savedContact = contacts.get(0);
+        Contact savedContact = contacts.getFirst();
         assert savedContact.getName().equals("John Smith");
         assert savedContact.getEmail().equals("john.smith@example.com");
         assert savedContact.getMobileNumber().equals("0612345678");
         assert savedContact.getMessage().equals("This is a test message for contact support.");
         assert savedContact.getStatus().equals(ApplicationConstants.OPEN_MESSAGE);
 
-        log.info("✅ Contact persisté en base avec succès");
+        log.info("Contact persisté en base avec succès");
     }
 
     @Test
@@ -121,11 +121,10 @@ class ContactControllerIntegrationTest {
         var contacts = contactRepository.findAll();
         assert contacts.size() == 2;
 
-        log.info("✅ Multiples contacts persistés avec succès");
+        log.info("Multiples contacts persistés avec succès");
     }
 
-    // ==================== TESTS GET /api/v1/contacts ====================
-
+    // TESTS GET /api/v1/contacts
     @Test
     @DisplayName("GET /api/v1/contacts - Devrait retourner les informations de contact configurées")
     void getContactInfo_ShouldReturnConfiguredInfo() throws Exception {
@@ -137,7 +136,7 @@ class ContactControllerIntegrationTest {
                 .andExpect(jsonPath("$.email").exists())
                 .andExpect(jsonPath("$.address").exists());
 
-        log.info("✅ Informations de contact retournées avec succès");
+        log.info("Informations de contact retournées avec succès");
     }
 
     @Test
@@ -148,11 +147,10 @@ class ContactControllerIntegrationTest {
                 .andDo(print())
                 .andExpect(status().isOk());
 
-        log.info("✅ Endpoint public accessible sans authentification");
+        log.info("Endpoint public accessible sans authentification");
     }
 
-    // ==================== TESTS DE VALIDATION ====================
-
+    //VALIDATION
     @Test
     @DisplayName("POST /api/v1/contacts - Devrait valider le format de l'email")
     @WithMockUser
@@ -178,11 +176,10 @@ class ContactControllerIntegrationTest {
         // Vérifier qu'aucun contact n'a été sauvegardé
         assert contactRepository.findAll().isEmpty();
 
-        log.info("✅ Validation email invalide vérifiée");
+        log.info("Validation email invalide vérifiée");
     }
 
-    // ==================== TESTS DE PERSISTANCE ====================
-
+    //PERSISTANCE
     @Test
     @DisplayName("Devrait vérifier la persistance complète des données")
     @WithMockUser
@@ -216,11 +213,10 @@ class ContactControllerIntegrationTest {
         assert savedContact.getCreatedAt() != null;
         assert savedContact.getCreatedBy() != null;
 
-        log.info("✅ Persistance complète des données vérifiée");
+        log.info("Persistance complète des données vérifiée");
     }
 
-    // ==================== TESTS DE TYPES DE DONNÉES ====================
-
+    //TYPES DE DONNÉES
     @Test
     @DisplayName("GET /api/v1/contacts - Devrait retourner les bons types de données")
     void getContactInfo_ShouldReturnCorrectDataTypes() throws Exception {
@@ -232,6 +228,6 @@ class ContactControllerIntegrationTest {
                 .andExpect(jsonPath("$.email").isString())
                 .andExpect(jsonPath("$.address").isString());
 
-        log.info("✅ Types de données vérifiés avec succès");
+        log.info("Types de données vérifiés avec succès");
     }
 }

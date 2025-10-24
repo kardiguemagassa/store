@@ -64,18 +64,15 @@ class AdminControllerTest {
     @MockitoBean
     private ExceptionFactory exceptionFactory;
 
-    private List<OrderResponseDto> mockOrders;
-    private List<ContactResponseDto> mockMessages;
-
     @BeforeEach
     void setUp() {
         // Données de test
-        mockOrders = Arrays.asList(
+        List<OrderResponseDto> mockOrders = Arrays.asList(
                 TestDataBuilder.createOrderResponseDto(1L),
                 TestDataBuilder.createOrderResponseDto(2L)
         );
 
-        mockMessages = Arrays.asList(
+        List<ContactResponseDto> mockMessages = Arrays.asList(
                 TestDataBuilder.createContactResponseDto(1L),
                 TestDataBuilder.createContactResponseDto(2L)
         );

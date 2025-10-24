@@ -1,8 +1,8 @@
 package com.store.store.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.store.store.config.TestSecurityConfig;
 import com.store.store.dto.UserDto;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         controllers = DummyController.class,
         excludeAutoConfiguration = org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration.class
 )
+@Slf4j
 @DisplayName("Tests Unitaires - DummyController")
 class DummyControllerTest {
 
@@ -49,8 +50,7 @@ class DummyControllerTest {
         validUserDto.setEmail("john.doe@example.com");
     }
 
-    // ==================== TESTS CREATE USER ====================
-
+    // CREATE USER
     @Test
     @DisplayName("POST /create-user - Devrait créer un utilisateur avec succès")
     void createUser_WithValidUser_ShouldReturnSuccess() throws Exception {
@@ -64,6 +64,8 @@ class DummyControllerTest {
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(content().string("User created successfully"));
+
+        log.info("User created successfully");
     }
 
     @Test
@@ -72,7 +74,7 @@ class DummyControllerTest {
         // When & Then - Utiliser un objet JSON vide
         mockMvc.perform(post(BASE_URL + "/create-user")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}")) // ✅ Objet vide plutôt que "null"
+                        .content("{}")) // Objet vide plutôt que "null"
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(content().string("User created successfully"));
@@ -92,8 +94,7 @@ class DummyControllerTest {
                 .andExpect(status().isUnsupportedMediaType());
     }
 
-    // ==================== TESTS REQUEST ENTITY ====================
-
+    // REQUEST ENTITY
     @Test
     @DisplayName("POST /request-entity - Devrait traiter RequestEntity avec succès")
     void createUserWithEntity_WithValidRequest_ShouldReturnSuccess() throws Exception {
@@ -110,8 +111,7 @@ class DummyControllerTest {
                 .andExpect(content().string("User created successfully"));
     }
 
-    // ==================== TESTS HEADERS ====================
-
+    //HEADERS
     @Test
     @DisplayName("GET /headers - Devrait lire les headers correctement")
     void readHeaders_WithValidHeaders_ShouldReturnSuccess() throws Exception {
@@ -125,6 +125,7 @@ class DummyControllerTest {
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Recevied headers with value")));
+        log.info("Headers : {}", mockMvc.perform(get(BASE_URL + "/headers")));
     }
 
     @Test
@@ -137,10 +138,9 @@ class DummyControllerTest {
                 .andExpect(status().isOk());
     }
 
-    // ==================== TESTS SEARCH WITH VALIDATION ====================
-
+    //SEARCH WITH VALIDATION
     @ParameterizedTest
-    @ValueSource(strings = {"validName", "longerValidUserName", "exactlyThirtyCharsLong!"}) // ✅ 30 chars max
+    @ValueSource(strings = {"validName", "longerValidUserName", "exactlyThirtyCharsLong!"}) // 30 chars max
     @DisplayName("GET /search - Devrait accepter les noms valides")
     void searchUser_WithValidNameLength_ShouldReturnSuccess(String userName) throws Exception {
         // When & Then
@@ -153,7 +153,7 @@ class DummyControllerTest {
 
     @ParameterizedTest
     @NullAndEmptySource
-// ✅ Retirer les espaces vides - ils déclenchent la validation @Size
+    // Retirer les espaces vides - ils déclenchent la validation @Size
     @DisplayName("GET /search - Devrait utiliser la valeur par défaut pour les noms vides")
     void searchUser_WithEmptyOrNullName_ShouldUseDefaultValue(String userName) throws Exception {
         // When & Then
@@ -162,6 +162,8 @@ class DummyControllerTest {
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Searching for user : Guest")));
+
+        log.info("Searching for user : Guest");
     }
 
     @ParameterizedTest
@@ -188,8 +190,7 @@ class DummyControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
-    // ==================== TESTS MULTIPLE SEARCH ====================
-
+    //MULTIPLE SEARCH
     @Test
     @DisplayName("GET /multiple-search - Devrait gérer multiple paramètres")
     void multipleSearch_WithMultipleParams_ShouldReturnSuccess() throws Exception {
@@ -224,13 +225,9 @@ class DummyControllerTest {
                 .andExpect(content().string("Searching for user : null null"));
     }
 
-    // ==================== TESTS PATH VARIABLES ====================
-
+    // PATH VARIABLES
     @ParameterizedTest
-    @CsvSource({
-            "123, 456, /user/123/posts/456",
-            "789, null, /user/789"
-    })
+    @CsvSource({"123, 456, /user/123/posts/456", "789, null, /user/789"})
     @DisplayName("GET /user/{userId}/posts/{postId} - Devrait gérer différents patterns d'URL")
     void getUser_WithDifferentPathPatterns_ShouldReturnSuccess(String userId, String postId, String url) throws Exception {
         // When & Then
@@ -250,8 +247,7 @@ class DummyControllerTest {
                 .andExpect(content().string("Searching for user : 123 and post : null"));
     }
 
-    // ==================== TESTS PATH VARIABLES WITH MAP ====================
-
+    //PATH VARIABLES WITH MAP
     @Test
     @DisplayName("GET /user/map/{userId}/posts/{postId} - Devrait extraire les variables de chemin via Map")
     void getUserUsingMap_WithBothVariables_ShouldReturnSuccess() throws Exception {
@@ -272,8 +268,7 @@ class DummyControllerTest {
                 .andExpect(content().string("Searching for user : 123 and post : null"));
     }
 
-    // ==================== TESTS DE PERFORMANCE ET COMPORTEMENT ====================
-
+    //PERFORMANCE ET COMPORTEMENT
     @Test
     @DisplayName("GET /search - Devrait répondre rapidement")
     void searchUser_ShouldRespondQuickly() throws Exception {
@@ -305,8 +300,7 @@ class DummyControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN));
     }
 
-    // ==================== TESTS D'ERREURS ====================
-
+    // ERREURS
     @Test
     @DisplayName("GET /nonexistent - Devrait retourner 404 pour endpoint inexistant")
     void nonExistentEndpoint_ShouldReturnNotFound() throws Exception {
