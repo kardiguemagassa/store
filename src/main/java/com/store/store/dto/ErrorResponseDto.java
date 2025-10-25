@@ -2,9 +2,11 @@ package com.store.store.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.http.HttpStatus;
 
 import java.time.LocalDateTime;
@@ -13,14 +15,16 @@ import java.util.Map;
 @Data
 @Builder
 @AllArgsConstructor
+@NoArgsConstructor
+@Schema(description = "Réponse d'erreur standardisée")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ErrorResponseDto {
 
     private String path;
-
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private String status;          // Bad Request, Not Found human
     private int statusCode;         // 400, 404 machines
+    @Schema(description = "Code d'erreur métier", example = "VALIDATION_ERROR")
     private String errorCode;       // VALIDATION_ERROR, RESOURCE_NOT_FOUND
     private String message;         // Message user friendly
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd/MM/yyyy HH:mm:ss", timezone = "Europe/Paris")

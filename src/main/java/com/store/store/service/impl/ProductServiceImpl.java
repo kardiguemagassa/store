@@ -1,10 +1,12 @@
 package com.store.store.service.impl;
 
 import com.store.store.dto.ProductDto;
+import com.store.store.entity.Category;
 import com.store.store.entity.Product;
 import com.store.store.exception.BusinessException;
 import com.store.store.exception.ExceptionFactory;
 import com.store.store.exception.ResourceNotFoundException;
+import com.store.store.repository.CategoryRepository;
 import com.store.store.repository.ProductRepository;
 import com.store.store.service.IProductService;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,7 @@ public class ProductServiceImpl implements IProductService {
     private final ProductRepository productRepository;
     private final ExceptionFactory exceptionFactory;
     private final MessageSource messageSource;
+    private final CategoryRepository categoryRepository;
 
     // LECTURE
     @Cacheable("products")
@@ -114,54 +117,56 @@ public class ProductServiceImpl implements IProductService {
     }
 
     @Override
-    public List<ProductDto> getProductsByCategory(String category) {
+    public List<ProductDto> getProductsByCategoryCode(String categoryCode) {
         try {
-            log.info("Fetching products by category: {}", category);
-            validateCategory(category);
+            log.info("Fetching products by category code: {}", categoryCode);
+            validateCategoryCode(categoryCode);
 
-            List<Product> products = productRepository.findByCategoryIgnoreCase(category);
+            // ✅ NOUVEAU : findByCategoryCode(categoryCode)
+            List<Product> products = productRepository.findByCategoryCode(categoryCode);
 
-            log.info("Found {} products in category: {}", products.size(), category);
+            log.info("Found {} products in category: {}", products.size(), categoryCode);
             return products.stream()
                     .map(this::transformToDTO)
                     .collect(Collectors.toList());
 
         } catch (DataAccessException e) {
-            log.error("Database error while fetching products by category: {}", category, e);
+            log.error("Database error while fetching products by category: {}", categoryCode, e);
             throw exceptionFactory.businessError(
-                    getLocalizedMessage("error.product.fetch.byCategory.failed", category)
+                    getLocalizedMessage("error.product.fetch.byCategoryCode.failed", categoryCode)
             );
         } catch (Exception e) {
-            log.error("Unexpected error while fetching products by category: {}", category, e);
+            log.error("Unexpected error while fetching products by category: {}", categoryCode, e);
             throw exceptionFactory.businessError(
-                    getLocalizedMessage("error.unexpected.product.fetch.byCategory", category)
+                    getLocalizedMessage("error.unexpected.product.fetch.byCategoryCode", categoryCode)
             );
         }
     }
 
     @Override
-    public Page<ProductDto> getProductsByCategory(String category, Pageable pageable) {
+    public Page<ProductDto> getProductsByCategoryCode(String categoryCode, Pageable pageable) {
         try {
             log.info("Fetching products by category: {} with pagination: page {}, size {}",
-                    category, pageable.getPageNumber(), pageable.getPageSize());
+                    categoryCode, pageable.getPageNumber(), pageable.getPageSize());
 
-            validateCategory(category);
+            validateCategoryCode(categoryCode);
 
-            Page<Product> productPage = productRepository.findByCategoryIgnoreCase(category, pageable);
+            // ✅ NOUVEAU : findByCategoryCode avec Pageable
+            Page<Product> productPage = productRepository.findByCategoryCode(categoryCode, pageable);
 
             log.info("Found {} products in category: {} on page {}",
-                    productPage.getContent().size(), category, pageable.getPageNumber());
+                    productPage.getContent().size(), categoryCode, pageable.getPageNumber());
             return productPage.map(this::transformToDTO);
 
         } catch (DataAccessException e) {
-            log.error("Database error while fetching paginated products by category: {}", category, e);
+            log.error("Database error while fetching paginated products by category: {}", categoryCode, e);
             throw exceptionFactory.businessError(
-                    getLocalizedMessage("error.product.fetch.byCategory.paginated.failed", category)
+                    getLocalizedMessage("error.product.fetch.byCategoryCode.paginated.failed", categoryCode)
             );
         } catch (Exception e) {
-            log.error("Unexpected error while fetching paginated products by category: {}", category, e);
+            log.error("Unexpected error while fetching paginated products by category: {}", categoryCode, e);
             throw exceptionFactory.businessError(
-                    getLocalizedMessage("error.unexpected.product.fetch.byCategory.paginated", category)
+                    getLocalizedMessage("error.unexpected.product.fetch.byCategoryCode.paginated", categoryCode)
             );
         }
     }
@@ -182,22 +187,35 @@ public class ProductServiceImpl implements IProductService {
                 );
             }
 
-            Product product = transformToEntity(productDto);
+            // ✅ NOUVEAU : Récupérer la catégorie
+            Category category = categoryRepository.findById(productDto.getCategoryId())
+                    .orElseThrow(() -> exceptionFactory.resourceNotFound(
+                            "Category", "id", productDto.getCategoryId().toString()
+                    ));
+
+            // Créer le produit
+            Product product = new Product();
+            product.setName(productDto.getName());
+            product.setDescription(productDto.getDescription());
+            product.setPrice(productDto.getPrice());
             product.setPopularity(0); // Popularité initiale
+            product.setImageUrl(productDto.getImageUrl());
+            product.setCategory(category);  // ✅ Définir la relation
+
             Product savedProduct = productRepository.save(product);
 
             log.info("Product created successfully with ID: {}", savedProduct.getId());
             return transformToDTO(savedProduct);
 
+        } catch (ResourceNotFoundException | BusinessException e) {
+            throw e;
         } catch (DataAccessException e) {
-            log.error("Database error while creating product: {}", productDto.getName(), e);
+            log.error("Database error while creating product", e);
             throw exceptionFactory.businessError(
                     getLocalizedMessage("error.product.create.failed")
             );
-        } catch (BusinessException e) {
-            throw e;
         } catch (Exception e) {
-            log.error("Unexpected error while creating product: {}", productDto.getName(), e);
+            log.error("Unexpected error while creating product", e);
             throw exceptionFactory.businessError(
                     getLocalizedMessage("error.unexpected.product.create")
             );
@@ -223,18 +241,38 @@ public class ProductServiceImpl implements IProductService {
                 );
             }
 
-            // Mise à jour des champs
+            // ✅ NOUVEAU : Récupérer la catégorie si categoryId a changé
+            if (productDto.getCategoryId() != null &&
+                    !productDto.getCategoryId().equals(existingProduct.getCategory().getCategoryId())) {
+
+                Category newCategory = categoryRepository.findById(productDto.getCategoryId())
+                        .orElseThrow(() -> exceptionFactory.resourceNotFound(
+                                "Category", "id", productDto.getCategoryId().toString()
+                        ));
+
+                existingProduct.setCategory(newCategory);
+                log.info("Category updated from {} to {}",
+                        existingProduct.getCategory().getName(),
+                        newCategory.getName());
+            }
+
+            // Mise à jour des autres champs
             existingProduct.setName(productDto.getName());
             existingProduct.setDescription(productDto.getDescription());
             existingProduct.setPrice(productDto.getPrice());
-            existingProduct.setCategory(productDto.getCategory());
             existingProduct.setImageUrl(productDto.getImageUrl());
+
+            // Note : popularity n'est généralement pas modifiable par l'utilisateur
+            // Si vous voulez le permettre, ajoutez :
+            // if (productDto.getPopularity() != null) {
+            //     existingProduct.setPopularity(productDto.getPopularity());
+            // }
 
             Product updatedProduct = productRepository.save(existingProduct);
             log.info("Product updated successfully: {}", id);
             return transformToDTO(updatedProduct);
 
-        } catch (ResourceNotFoundException e) {
+        } catch (ResourceNotFoundException | BusinessException e) {
             throw e;
         } catch (DataAccessException e) {
             log.error("Database error while updating product ID: {}", id, e);
@@ -248,6 +286,7 @@ public class ProductServiceImpl implements IProductService {
             );
         }
     }
+
 
     @Override
     @Transactional
@@ -350,28 +389,85 @@ public class ProductServiceImpl implements IProductService {
     }
 
     @Override
-    public Page<ProductDto> searchProductsByCategory(String category, String query, Pageable pageable) {
+    public Page<ProductDto> searchProductsByCategoryCode(String categoryCode, String query, Pageable pageable) {
         try {
-            log.info("Searching products in category: {} with query: {}", category, query);
-            validateCategory(category);
+            log.info("Searching products in category: {} with query: {}", categoryCode, query);
+            validateCategoryCode(categoryCode);
 
             if (query == null || query.trim().isEmpty()) {
-                return getProductsByCategory(category, pageable);
+                return getProductsByCategoryCode(categoryCode, pageable);
             }
 
-            Page<Product> productPage = productRepository.findByCategoryAndNameContainingIgnoreCase(category, query, pageable);
-            log.info("Found {} products in category: {} for query: {}", productPage.getContent().size(), category, query);
+            // ✅ NOUVEAU : Utiliser la nouvelle méthode du repository
+            Page<Product> productPage = productRepository.findByCategoryCodeAndNameContaining(
+                    categoryCode, query, pageable
+            );
+
+            log.info("Found {} products in category: {} for query: {}",
+                    productPage.getContent().size(), categoryCode, query);
             return productPage.map(this::transformToDTO);
 
         } catch (DataAccessException e) {
-            log.error("Database error while searching products in category: {} with query: {}", category, query, e);
+            log.error("Database error while searching products in category: {} with query: {}",
+                    categoryCode, query, e);
             throw exceptionFactory.businessError(
-                    getLocalizedMessage("error.product.search.byCategory.failed", category, query)
+                    getLocalizedMessage("error.product.search.byCategoryCode.failed", categoryCode, query)
             );
         } catch (Exception e) {
-            log.error("Unexpected error while searching products in category: {} with query: {}", category, query, e);
+            log.error("Unexpected error while searching products in category: {} with query: {}",
+                    categoryCode, query, e);
             throw exceptionFactory.businessError(
-                    getLocalizedMessage("error.unexpected.product.search.byCategory", category, query)
+                    getLocalizedMessage("error.unexpected.product.search.byCategoryCode", categoryCode, query)
+            );
+        }
+    }
+
+    // ✅ AJOUTER une nouvelle méthode pour créer un produit avec CategoryId
+    @Override
+    @Transactional
+    public ProductDto createProductWithCategory(ProductDto productDto, Long categoryId) {
+        try {
+            log.info("Creating new product: {} with category ID: {}", productDto.getName(), categoryId);
+
+            validateProductForCreation(productDto);
+
+            // Vérifier que la catégorie existe
+            Category category = categoryRepository.findById(categoryId)
+                    .orElseThrow(() -> exceptionFactory.resourceNotFound(
+                            "Category", "id", categoryId.toString()
+                    ));
+
+            // Vérifier si le produit existe déjà
+            if (productRepository.existsByNameIgnoreCase(productDto.getName())) {
+                throw exceptionFactory.businessError(
+                        getLocalizedMessage("error.product.already.exists", productDto.getName())
+                );
+            }
+
+            Product product = new Product();
+            product.setName(productDto.getName());
+            product.setDescription(productDto.getDescription());
+            product.setPrice(productDto.getPrice());
+            product.setPopularity(0);
+            product.setImageUrl(productDto.getImageUrl());
+            product.setCategory(category);  // ✅ Définir la relation
+
+            Product savedProduct = productRepository.save(product);
+
+            log.info("Product created successfully with ID: {}", savedProduct.getId());
+            return transformToDTO(savedProduct);
+
+        } catch (ResourceNotFoundException | BusinessException e) {
+            throw e;
+        } catch (DataAccessException e) {
+            log.error("Database error while creating product with category", e);
+            throw exceptionFactory.businessError(
+                    getLocalizedMessage("error.product.create.failed")
+            );
+        } catch (Exception e) {
+            log.error("Unexpected error while creating product", e);
+            throw exceptionFactory.businessError(
+                    getLocalizedMessage("error.unexpected.product.create")
             );
         }
     }
@@ -384,15 +480,15 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
-    private void validateCategory(String category) {
-        if (category == null || category.trim().isEmpty()) {
-            throw exceptionFactory.validationError("category",
-                    getLocalizedMessage("validation.product.category.required"));
+    private void validateCategoryCode(String categoryCode) {
+        if (categoryCode == null || categoryCode.trim().isEmpty()) {
+            throw exceptionFactory.validationError("categoryCode",
+                    getLocalizedMessage("validation.product.categoryCode.required"));
         }
 
-        if (category.length() > 100) {
-            throw exceptionFactory.validationError("category",
-                    getLocalizedMessage("validation.product.category.tooLong", 100));
+        if (categoryCode.length() > 50) {
+            throw exceptionFactory.validationError("categoryCode",
+                    getLocalizedMessage("validation.product.categoryCode.tooLong", 50));
         }
     }
 
@@ -412,14 +508,20 @@ public class ProductServiceImpl implements IProductService {
                     getLocalizedMessage("validation.product.price.invalid"));
         }
 
-        if (productDto.getCategory() == null || productDto.getCategory().trim().isEmpty()) {
-            throw exceptionFactory.validationError("category",
-                    getLocalizedMessage("validation.product.category.required"));
+        // ✅ CORRIGER : Valider categoryId au lieu de category
+        if (productDto.getCategoryId() == null) {
+            throw exceptionFactory.validationError("categoryId",
+                    getLocalizedMessage("validation.product.categoryId.required"));
         }
 
         if (productDto.getName().length() > 250) {
             throw exceptionFactory.validationError("name",
                     getLocalizedMessage("validation.product.name.tooLong", 250));
+        }
+
+        if (productDto.getDescription() != null && productDto.getDescription().length() > 500) {
+            throw exceptionFactory.validationError("description",
+                    getLocalizedMessage("validation.product.description.tooLong", 500));
         }
     }
 
@@ -474,17 +576,45 @@ public class ProductServiceImpl implements IProductService {
         return "/uploads/products/" + fileName;
     }
 
+    /**
+     * ✅ Transforme une Entity Product en ProductDto
+     */
     private ProductDto transformToDTO(Product product) {
         ProductDto productDto = new ProductDto();
-        BeanUtils.copyProperties(product, productDto);
         productDto.setProductId(product.getId());
+        productDto.setName(product.getName());
+        productDto.setDescription(product.getDescription());
+        productDto.setPrice(product.getPrice());
+        productDto.setPopularity(product.getPopularity());
+        productDto.setImageUrl(product.getImageUrl());
+
+        // ✅ AJOUTER les informations de catégorie
+        if (product.getCategory() != null) {
+            productDto.setCategoryId(product.getCategory().getCategoryId());
+            productDto.setCategoryCode(product.getCategory().getCode());
+            productDto.setCategoryName(product.getCategory().getName());
+            productDto.setCategoryIcon(product.getCategory().getIcon());
+        }
+
         return productDto;
     }
 
+    /**
+     * ✅ Transforme un ProductDto en Entity Product (SANS la relation Category)
+     * Note : La catégorie doit être définie séparément via setCateogry()
+     */
     private Product transformToEntity(ProductDto productDto) {
         Product product = new Product();
-        BeanUtils.copyProperties(productDto, product);
         product.setId(productDto.getProductId());
+        product.setName(productDto.getName());
+        product.setDescription(productDto.getDescription());
+        product.setPrice(productDto.getPrice());
+        product.setPopularity(productDto.getPopularity());
+        product.setImageUrl(productDto.getImageUrl());
+
+        // ⚠️ NE PAS définir la catégorie ici
+        // Elle doit être récupérée de la DB et définie explicitement
+
         return product;
     }
 
