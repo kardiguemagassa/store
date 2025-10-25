@@ -13,6 +13,24 @@ CREATE TABLE IF NOT EXISTS products
     updated_by  VARCHAR(20) DEFAULT NULL
     );
 
+CREATE TABLE IF NOT EXISTS categories (
+    category_id   BIGINT AUTO_INCREMENT PRIMARY KEY,
+    code          VARCHAR(50) NOT NULL UNIQUE COMMENT 'Code unique (SPORTS, ANIME, etc.)',
+    name          VARCHAR(100) NOT NULL COMMENT 'Nom de la catégorie',
+    description   VARCHAR(500) COMMENT 'Description',
+    icon          VARCHAR(10) COMMENT 'Emoji icon',
+    display_order INT DEFAULT 0 COMMENT 'Ordre d''affichage',
+    is_active     BOOLEAN DEFAULT TRUE COMMENT 'Actif/Inactif',
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_by    VARCHAR(100) NOT NULL,
+    updated_at    TIMESTAMP DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    updated_by    VARCHAR(100) DEFAULT NULL,
+
+    INDEX idx_code (code),
+    INDEX idx_active (is_active),
+    INDEX idx_display_order (display_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS contacts
 (
     contact_id    BIGINT AUTO_INCREMENT PRIMARY KEY,

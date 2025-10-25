@@ -13,15 +13,38 @@ import java.util.List;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-    List<Product> findByCategoryIgnoreCase(String category);
-    Page<Product> findByCategoryIgnoreCase(String category, Pageable pageable);
+    // Recherche générale
     Page<Product> findAll(Pageable pageable);
     boolean existsByNameIgnoreCase(String name);
     Page<Product> findByNameContainingIgnoreCase(String query, Pageable pageable);
+
+    // Recherche par catégorie ID
+    List<Product> findByCategoryCategoryId(Long categoryId);
+    Page<Product> findByCategoryCategoryId(Long categoryId, Pageable pageable);
+
+    // Recherche par code de catégorie
+    @Query("SELECT p FROM Product p WHERE p.category.code = :code")
+    List<Product> findByCategoryCode(@Param("code") String code);
+
+    @Query("SELECT p FROM Product p WHERE p.category.code = :code")
+    Page<Product> findByCategoryCode(@Param("code") String code, Pageable pageable);
+
     // Recherche par catégorie ET nom
-    @Query("SELECT p FROM Product p WHERE LOWER(p.category) = LOWER(:category) AND LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%'))")
-    Page<Product> findByCategoryAndNameContainingIgnoreCase(
-            @Param("category") String category,
+    @Query("SELECT p FROM Product p WHERE p.category.code = :categoryCode " +
+            "AND LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%'))")
+    Page<Product> findByCategoryCodeAndNameContaining(
+            @Param("categoryCode") String categoryCode,
             @Param("query") String query,
-            Pageable pageable);
+            Pageable pageable
+    );
+
+    // Comptage
+    @Query("SELECT COUNT(p) FROM Product p WHERE p.category.categoryId = :categoryId")
+    Long countByCategoryId(@Param("categoryId") Long categoryId);
+
+    // Recherche avancée
+    @Query("SELECT p FROM Product p WHERE " +
+            "LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(p.description) LIKE LOWER(CONCAT('%', :query, '%'))")
+    Page<Product> searchProducts(@Param("query") String query, Pageable pageable);
 }

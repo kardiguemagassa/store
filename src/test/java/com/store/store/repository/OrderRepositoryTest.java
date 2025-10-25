@@ -400,7 +400,8 @@ class OrderRepositoryTest {
 
         Order order = TestDataBuilder.createOrder(null, customer, ApplicationConstants.ORDER_STATUS_CREATED);
         order.setTotalPrice(new BigDecimal("299.99"));
-        order.setPaymentId("pi_complete_test");
+        //order.setPaymentId("pi_complete_test");
+        order.setPaymentIntentId("pi_complete_test");
         order.setPaymentStatus("completed");
 
         // When
@@ -414,7 +415,7 @@ class OrderRepositoryTest {
         Order found = retrievedOrder.get();
 
         assertThat(found.getTotalPrice()).isEqualByComparingTo(new BigDecimal("299.99"));
-        assertThat(found.getPaymentId()).isEqualTo("pi_complete_test");
+        assertThat(found.getPaymentIntentId()).isEqualTo("pi_complete_test");
         assertThat(found.getPaymentStatus()).isEqualTo("completed");
         assertThat(found.getOrderStatus()).isEqualTo(ApplicationConstants.ORDER_STATUS_CREATED);
         assertThat(found.getCreatedAt()).isNotNull();

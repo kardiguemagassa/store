@@ -202,7 +202,7 @@ class AdminControllerIntegrationTest {
         order.setOrderStatus(ApplicationConstants.ORDER_STATUS_CREATED);
         order.setTotalPrice(BigDecimal.valueOf(175.00));
         order.setPaymentStatus("PENDING");
-        order.setPaymentId("test-payment-" + System.currentTimeMillis());
+        order.setPaymentIntentId("test-payment-" + System.currentTimeMillis());
         order.setCreatedAt(Instant.now());
 
         return orderRepository.save(order);

@@ -99,7 +99,7 @@ class OrderServiceImplTest {
         order.setOrderId(1L);
         order.setCustomer(customer);
         order.setTotalPrice(new BigDecimal("175.00"));
-        order.setPaymentId("pi_test_123456");
+        order.setPaymentIntentId("pi_test_123456");
         order.setPaymentStatus("paid");
         order.setOrderStatus(ApplicationConstants.ORDER_STATUS_CREATED);
         order.setCreatedAt(Instant.now());
@@ -177,16 +177,16 @@ class OrderServiceImplTest {
         assertThat(result).hasSize(1);
 
         OrderResponseDto firstOrder = result.getFirst();
-        assertThat(firstOrder.orderId()).isEqualTo(1L);
-        assertThat(firstOrder.status()).isEqualTo(ApplicationConstants.ORDER_STATUS_CREATED);
-        assertThat(firstOrder.totalPrice()).isEqualTo(new BigDecimal("175.00"));
-        assertThat(firstOrder.items()).hasSize(2);
+        assertThat(firstOrder.getOrderId()).isEqualTo(1L);
+        assertThat(firstOrder.getOrderStatus()).isEqualTo(ApplicationConstants.ORDER_STATUS_CREATED);
+        assertThat(firstOrder.getTotalPrice()).isEqualTo(new BigDecimal("175.00"));
+        assertThat(firstOrder.getItems()).hasSize(2);
 
         // Vérification des items
-        assertThat(firstOrder.items().getFirst().productName()).isEqualTo("Product 1");
-        assertThat(firstOrder.items().get(0).quantity()).isEqualTo(2);
-        assertThat(firstOrder.items().get(1).productName()).isEqualTo("Product 2");
-        assertThat(firstOrder.items().get(1).quantity()).isEqualTo(1);
+        assertThat(firstOrder.getItems().getFirst().getProductName()).isEqualTo("Product 1");
+        assertThat(firstOrder.getItems().getFirst().getQuantity()).isEqualTo(2);
+        assertThat(firstOrder.getItems().get(1).getProductName()).isEqualTo("Product 2");
+        assertThat(firstOrder.getItems().get(1).getQuantity()).isEqualTo(1);
 
         verify(profileService).getAuthenticatedCustomer();
         verify(orderRepository).findOrdersByCustomerWithNativeQuery(customer.getCustomerId());
@@ -223,9 +223,9 @@ class OrderServiceImplTest {
         assertThat(result).isNotEmpty();
         assertThat(result).hasSize(1);
 
-        OrderResponseDto firstOrder = result.get(0);
-        assertThat(firstOrder.status()).isEqualTo(ApplicationConstants.ORDER_STATUS_CREATED);
-        assertThat(firstOrder.items()).hasSize(2);
+        OrderResponseDto firstOrder = result.getFirst();
+        assertThat(firstOrder.getPaymentStatus()).isEqualTo(ApplicationConstants.ORDER_STATUS_CREATED);
+        assertThat(firstOrder.getItems()).hasSize(2);
 
         verify(orderRepository).findOrdersByStatusWithNativeQuery(ApplicationConstants.ORDER_STATUS_CREATED);
     }
@@ -310,24 +310,24 @@ class OrderServiceImplTest {
         OrderResponseDto responseDto = result.getFirst();
 
         // Vérification des propriétés de base
-        assertThat(responseDto.orderId()).isEqualTo(order.getOrderId());
-        assertThat(responseDto.status()).isEqualTo(order.getOrderStatus());
-        assertThat(responseDto.totalPrice()).isEqualTo(order.getTotalPrice());
-        assertThat(responseDto.createdAt()).isEqualTo(order.getCreatedAt().toString());
+        assertThat(responseDto.getOrderId()).isEqualTo(order.getOrderId());
+        assertThat(responseDto.getPaymentStatus()).isEqualTo(order.getOrderStatus());
+        assertThat(responseDto.getTotalPrice()).isEqualTo(order.getTotalPrice());
+        assertThat(responseDto.getCreatedAt()).isEqualTo(order.getCreatedAt().toString());
 
         // Vérification des items
-        assertThat(responseDto.items()).hasSize(2);
+        assertThat(responseDto.getItems()).hasSize(2);
 
         // Premier item
-        assertThat(responseDto.items().getFirst().productName()).isEqualTo("Product 1");
-        assertThat(responseDto.items().getFirst().quantity()).isEqualTo(2);
-        assertThat(responseDto.items().getFirst().price()).isEqualTo(new BigDecimal("50.00"));
-        assertThat(responseDto.items().getFirst().imageUrl()).isEqualTo("https://example.com/image1.jpg");
+        assertThat(responseDto.getItems().getFirst().getProductName()).isEqualTo("Product 1");
+        assertThat(responseDto.getItems().getFirst().getQuantity()).isEqualTo(2);
+        assertThat(responseDto.getItems().getFirst().getPrice()).isEqualTo(new BigDecimal("50.00"));
+        assertThat(responseDto.getItems().getFirst().getProductImageUrl()).isEqualTo("https://example.com/image1.jpg");
 
         // Deuxième item
-        assertThat(responseDto.items().get(1).productName()).isEqualTo("Product 2");
-        assertThat(responseDto.items().get(1).quantity()).isEqualTo(1);
-        assertThat(responseDto.items().get(1).price()).isEqualTo(new BigDecimal("75.00"));
-        assertThat(responseDto.items().get(1).imageUrl()).isEqualTo("https://example.com/image2.jpg");
+        assertThat(responseDto.getItems().get(1).getProductName()).isEqualTo("Product 2");
+        assertThat(responseDto.getItems().get(1).getQuantity()).isEqualTo(1);
+        assertThat(responseDto.getItems().get(1).getPrice()).isEqualTo(new BigDecimal("75.00"));
+        assertThat(responseDto.getItems().get(1).getProductImageUrl()).isEqualTo("https://example.com/image2.jpg");
     }
 }

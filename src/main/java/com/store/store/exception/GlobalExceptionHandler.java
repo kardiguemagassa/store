@@ -3,6 +3,7 @@ package com.store.store.exception;
 import com.store.store.constants.ErrorCodes;
 import com.store.store.dto.ErrorResponseDto;
 import jakarta.validation.ConstraintViolationException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
 import org.springframework.http.HttpStatus;
@@ -31,15 +32,14 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
+@RequiredArgsConstructor
 @Slf4j
 public class GlobalExceptionHandler {
 
     private final MessageSource messageSource;
 
-    public GlobalExceptionHandler(MessageSource messageSource) {
-        this.messageSource = messageSource;
-    }
-
+    // 🟢 SUGGESTION : Ordre par fréquence d'utilisation
+    // 1. Validation (très fréquent)
     // Gestion centralisée avec factory methods
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponseDto> handleValidationExceptions(
@@ -59,6 +59,93 @@ public class GlobalExceptionHandler {
                 extractPath(webRequest),
                 errors
 
+        );
+
+        return ResponseEntity.badRequest().body(errorResponse);
+    }
+
+    // 2
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponseDto> handleResourceNotFound(
+            ResourceNotFoundException exception, WebRequest webRequest) {
+
+        log.warn("Resource not found: {} - Path: {}", exception.getMessage(), extractPath(webRequest));
+
+        ErrorResponseDto errorResponse = ErrorResponseDto.notFound(
+                ErrorCodes.RESOURCE_NOT_FOUND,                  // Code métier
+                exception.getMessage(),
+                extractPath(webRequest));
+
+
+        return new ResponseEntity<>(errorResponse,HttpStatus.NOT_FOUND);
+    }
+
+    // 2
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ErrorResponseDto> handleBusinessException(BusinessException exception, WebRequest webRequest) {
+
+        log.warn("Business rule violation: {}", exception.getMessage());
+
+        ErrorResponseDto errorResponse = ErrorResponseDto.badRequest(
+                ErrorCodes.BUSINESS_RULE_VIOLATION,
+                exception.getMessage(),
+                extractPath(webRequest));
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    // 3
+    // Gestion des exceptions d'authentification'
+    @ExceptionHandler({BadCredentialsException.class, DisabledException.class, LockedException.class, AuthenticationException.class})
+    public ResponseEntity<ErrorResponseDto> handleAuthenticationExceptions(
+            RuntimeException exception, WebRequest webRequest) {
+
+        String path = extractPath(webRequest);
+        HttpStatus status = HttpStatus.UNAUTHORIZED;
+        String errorCode;
+        String message;
+
+        switch (exception) {
+            case BadCredentialsException badCredentialsException -> {
+                errorCode = ErrorCodes.INVALID_CREDENTIALS;
+                message = getLocalizedMessage("auth.bad.credentials");
+                log.warn("Tentative de connexion avec identifiants invalides - Path: {}", path);
+            }
+            case DisabledException disabledException -> {
+                errorCode = ErrorCodes.ACCOUNT_DISABLED;
+                message = getLocalizedMessage("auth.account.disabled");
+                log.warn("Tentative de connexion avec compte désactivé - Path: {}", path);
+            }
+            case LockedException lockedException -> {
+                errorCode = ErrorCodes.ACCOUNT_LOCKED;
+                message = getLocalizedMessage("auth.account.locked");
+                log.warn("Tentative de connexion avec compte verrouillé - Path: {}", path);
+            }
+            default -> {
+                errorCode = ErrorCodes.AUTHENTICATION_FAILED;
+                message = getLocalizedMessage("auth.failed");
+                log.warn("Échec d'authentification: {} - Path: {}", exception.getMessage(), path);
+            }
+        }
+
+        ErrorResponseDto errorResponse = ErrorResponseDto.unauthorized(errorCode, message, path);
+
+        return new ResponseEntity<>(errorResponse, status);
+    }
+
+    // 4
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponseDto> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException exception, WebRequest webRequest) {
+
+        log.warn("Malformed JSON request: {} - Path: {}", exception.getMessage(), extractPath(webRequest));
+
+        String errorMessage = getLocalizedMessage("validation.json.format.error");
+
+        ErrorResponseDto errorResponse = ErrorResponseDto.badRequest(
+                ErrorCodes.INVALID_JSON,
+                errorMessage,
+                extractPath(webRequest)
         );
 
         return ResponseEntity.badRequest().body(errorResponse);
@@ -116,21 +203,6 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponseDto> handleResourceNotFound(
-            ResourceNotFoundException exception, WebRequest webRequest) {
-
-        log.warn("Resource not found: {} - Path: {}", exception.getMessage(), extractPath(webRequest));
-
-        ErrorResponseDto errorResponse = ErrorResponseDto.notFound(
-                ErrorCodes.RESOURCE_NOT_FOUND,                  // Code métier
-                exception.getMessage(),
-                extractPath(webRequest));
-
-
-        return new ResponseEntity<>(errorResponse,HttpStatus.NOT_FOUND);
-    }
-
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponseDto> handleAccessDenied(
             AccessDeniedException exception, WebRequest webRequest) {
@@ -146,19 +218,6 @@ public class GlobalExceptionHandler {
 
     }
 
-    @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ErrorResponseDto> handleBusinessException(BusinessException exception, WebRequest webRequest) {
-
-        log.warn("Business rule violation: {}", exception.getMessage());
-
-        ErrorResponseDto errorResponse = ErrorResponseDto.badRequest(
-                ErrorCodes.BUSINESS_RULE_VIOLATION,
-                exception.getMessage(),
-                extractPath(webRequest));
-
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
-    }
-
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponseDto> handleValidationException(
             ValidationException exception, WebRequest webRequest) {
@@ -170,23 +229,6 @@ public class GlobalExceptionHandler {
                 exception.getMessage(),
                 extractPath(webRequest),
                 exception.getErrors());
-
-        return ResponseEntity.badRequest().body(errorResponse);
-    }
-
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponseDto> handleHttpMessageNotReadable(
-            HttpMessageNotReadableException exception, WebRequest webRequest) {
-
-        log.warn("Malformed JSON request: {} - Path: {}", exception.getMessage(), extractPath(webRequest));
-
-        String errorMessage = getLocalizedMessage("validation.json.format.error");
-
-        ErrorResponseDto errorResponse = ErrorResponseDto.badRequest(
-                ErrorCodes.INVALID_JSON,
-                errorMessage,
-                extractPath(webRequest)
-        );
 
         return ResponseEntity.badRequest().body(errorResponse);
     }
@@ -209,44 +251,6 @@ public class GlobalExceptionHandler {
         );
 
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    // Gestion des exceptions d'authentification'
-    @ExceptionHandler({BadCredentialsException.class, DisabledException.class, LockedException.class, AuthenticationException.class})
-    public ResponseEntity<ErrorResponseDto> handleAuthenticationExceptions(
-            RuntimeException exception, WebRequest webRequest) {
-
-        String path = extractPath(webRequest);
-        HttpStatus status = HttpStatus.UNAUTHORIZED;
-        String errorCode;
-        String message;
-
-        switch (exception) {
-            case BadCredentialsException badCredentialsException -> {
-                errorCode = ErrorCodes.INVALID_CREDENTIALS;
-                message = getLocalizedMessage("auth.bad.credentials");
-                log.warn("Tentative de connexion avec identifiants invalides - Path: {}", path);
-            }
-            case DisabledException disabledException -> {
-                errorCode = ErrorCodes.ACCOUNT_DISABLED;
-                message = getLocalizedMessage("auth.account.disabled");
-                log.warn("Tentative de connexion avec compte désactivé - Path: {}", path);
-            }
-            case LockedException lockedException -> {
-                errorCode = ErrorCodes.ACCOUNT_LOCKED;
-                message = getLocalizedMessage("auth.account.locked");
-                log.warn("Tentative de connexion avec compte verrouillé - Path: {}", path);
-            }
-            default -> {
-                errorCode = ErrorCodes.AUTHENTICATION_FAILED;
-                message = getLocalizedMessage("auth.failed");
-                log.warn("Échec d'authentification: {} - Path: {}", exception.getMessage(), path);
-            }
-        }
-
-        ErrorResponseDto errorResponse = ErrorResponseDto.unauthorized(errorCode, message, path);
-
-        return new ResponseEntity<>(errorResponse, status);
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)

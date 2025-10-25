@@ -16,6 +16,8 @@ public class ApplicationConstants {
     public static final String ORDER_STATUS_DELIVERED = "LIVRÉ";
     public static final String  ORDER_STATUS_CANCELLED = "ANNULÉ";
     public static final String ORDER_STATUS_PENDING = "EN ATTENTE";
+    public static final String ROLE_ADMIN = "ADMIN";
+    public static final String ROLE_USER = "USER";
 
 
     public static final String  OPEN_MESSAGE = "OUVRIR";
