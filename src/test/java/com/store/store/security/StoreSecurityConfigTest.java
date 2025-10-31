@@ -1,3 +1,12 @@
+import com.store.store.repository.CustomerRepository;
+import com.store.store.repository.RoleRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
+
 // ============================================================
 // 4. TESTS D'INTÉGRATION - StoreNonProdAuthenticationProviderTest.java
 // ============================================================
@@ -7,6 +16,7 @@ import com.store.store.entity.Customer;
 import com.store.store.entity.Role;
 import com.store.store.repository.CustomerRepository;
 import com.store.store.repository.RoleRepository;
+import com.store.store.security.CustomerUserDetails;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
