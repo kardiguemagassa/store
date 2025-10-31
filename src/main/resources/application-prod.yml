@@ -1,0 +1,119 @@
+# ========================================
+# application-prod.yml
+# Configuration pour l'environnement de PRODUCTION
+# ========================================
+
+spring:
+  datasource:
+    url: ${DATABASE_URL}  # Variable d'environnement obligatoire
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    show-sql: false  # IMPORTANT: Désactivé en prod
+    hibernate:
+      ddl-auto: validate  # CRITIQUE: Jamais 'update' en prod
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+        # Cache de second niveau (optionnel)
+        cache:
+          use_second_level_cache: true
+          region:
+            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+
+  mail:
+    host: ${MAIL_HOST:smtp.sendgrid.net}  # Utiliser un service professionnel
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}  # Depuis variables d'environnement
+    password: ${MAIL_PASSWORD}
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never  # SÉCURITÉ: Pas de détails en prod
+    include-binding-errors: never
+    include-stacktrace: never  # CRITIQUE: Jamais de stack trace en prod
+  compression:
+    enabled: true  # Compression GZIP
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+
+logging:
+  level:
+    root: WARN  # Moins verbeux en prod
+    com.store.store: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: false
+  file:
+    name: /var/log/store-api/application.log  # Chemin production
+    max-size: 50MB
+    max-history: 90  # 3 mois d'historique
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus  # Uniquement le nécessaire
+  endpoint:
+    health:
+      show-details: when-authorized  # SÉCURITÉ: Détails uniquement si authentifié
+
+# Store Configuration
+store:
+  jwt:
+    secret: ${JWT_SECRET}  # OBLIGATOIRE depuis variable d'environnement
+    expiration-ms: 900000  # 15 minutes
+
+  refresh-token:
+    expiration-ms: 604800000  # 7 jours
+    max-active-tokens: 3  # Plus restrictif en prod
+    rotation-enabled: true
+    ip-tracking-enabled: true
+
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS}  # Domaines autorisés uniquement
+
+  security:
+    alert:
+      from-email: ${SECURITY_ALERT_EMAIL:security@yourstore.com}
+
+# Rate Limiting plus strict en production
+resilience4j:
+  ratelimiter:
+    instances:
+      refresh:
+        limit-for-period: 5  # Plus restrictif
+        limit-refresh-period: 60s
+      login:
+        limit-for-period: 3  # Protection brute-force
+        limit-refresh-period: 60s
+
+# ========================================
+# VARIABLES D'ENVIRONNEMENT REQUISES
+# ========================================
+# Les variables suivantes DOIVENT être définies:
+#
+# DATABASE_URL=jdbc:mysql://prod-db.example.com:3306/store_prod
+# DATABASE_USERNAME=store_user
+# DATABASE_PASSWORD=super-secure-password
+# JWT_SECRET=generated-with-openssl-rand-base64-64
+# MAIL_USERNAME=apikey-or-username
+# MAIL_PASSWORD=sendgrid-api-key-or-password
+# ALLOWED_ORIGINS=https://yourstore.com,https://www.yourstore.com
+# SECURITY_ALERT_EMAIL=security@yourstore.com
+#
+# Exemple de commande de démarrage:
+# java -jar -Dspring.profiles.active=prod \
+#      -DDATABASE_URL=... \
+#      -DJWT_SECRET=... \
+#      store.jar
