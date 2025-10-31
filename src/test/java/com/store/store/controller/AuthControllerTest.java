@@ -9,7 +9,7 @@ import com.store.store.entity.Role;
 import com.store.store.repository.CustomerRepository;
 import com.store.store.repository.RoleRepository;
 import com.store.store.security.CustomerUserDetails;
-import com.store.store.service.RoleAssignmentService;
+import com.store.store.service.IRoleAssignmentService;
 import com.store.store.util.JwtUtil;
 import com.store.store.util.TestDataBuilder;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,7 +78,7 @@ class AuthControllerTest {
     private JwtUtil jwtUtil;
 
     @MockitoBean
-    private RoleAssignmentService roleAssignmentService;
+    private IRoleAssignmentService roleAssignmentService;
 
     //Constantes
     private static final String TEST_EMAIL = "test@example.com";

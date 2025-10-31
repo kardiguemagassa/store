@@ -9,7 +9,7 @@ import com.store.store.exception.*;
 import com.store.store.repository.CustomerRepository;
 import com.store.store.service.IContactService;
 import com.store.store.service.IOrderService;
-import com.store.store.service.RoleAssignmentService;
+import com.store.store.service.IRoleAssignmentService;
 import com.store.store.util.TestDataBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,7 +59,7 @@ class AdminControllerTest {
     private CustomerRepository customerRepository;
 
     @MockitoBean
-    private RoleAssignmentService roleAssignmentService;
+    private IRoleAssignmentService roleAssignmentService;
 
     @MockitoBean
     private ExceptionFactory exceptionFactory;

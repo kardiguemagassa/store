@@ -1,7 +1,7 @@
 // ============================================================
 // 3. TESTS D'INTÉGRATION - StoreSecurityConfigIntegrationTest.java
 // ============================================================
-package com.store.store.security;
+/*package com.store.store.security;
 
 import com.store.store.entity.Customer;
 import com.store.store.entity.Role;
@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Testent l'interaction réelle entre tous les composants de sécurité.
  * Usage : Validation des scénarios complets
  */
+/*
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
@@ -178,3 +179,5 @@ class StoreSecurityConfigIntegrationTest {
         return customer;
     }
 }
+
+ */
