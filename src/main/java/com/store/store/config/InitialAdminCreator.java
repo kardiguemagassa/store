@@ -1,4 +1,4 @@
 package com.store.store.config;
 
-public class StripeConfig {
+public class InitialAdminCreator {
 }
