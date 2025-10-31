@@ -1,3 +1,228 @@
+# ========================================
+# .gitignore pour projet Spring Boot
+# Protection des secrets et fichiers sensibles
+# ========================================
+
+# ========================================
+# VARIABLES D'ENVIRONNEMENT (CRITIQUE)
+# ========================================
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+
+# ========================================
+# SECRETS ET CREDENTIALS
+# ========================================
+application-local.yml
+application-local.properties
+application-secrets.yml
+application-secrets.properties
+secrets.yml
+secrets.properties
+stripe.properties
+credentials.json
+
+# ========================================
+# LOGS
+# ========================================
+/logs/
+*.log
+*.log.*
+/log/
+
+# ========================================
+# MAVEN
+# ========================================
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.properties
+
+# ========================================
+# GRADLE
+# ========================================
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ========================================
+# INTELLIJ IDEA
+# ========================================
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# Configuration personnelle (peut contenir des secrets)
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries
+.idea/vcs.xml
+.idea/jsLibraryMappings.xml
+.idea/dataSources.ids
+.idea/dataSources.local.xml
+.idea/sqlDataSources.xml
+.idea/dynamic.xml
+.idea/uiDesigner.xml
+
+# ========================================
+# VISUAL STUDIO CODE
+# ========================================
+.vscode/
+*.code-workspace
+.history/
+
+# ========================================
+# ECLIPSE
+# ========================================
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# ========================================
+# NETBEANS
+# ========================================
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# ========================================
+# MAC OS
+# ========================================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ========================================
+# WINDOWS
+# ========================================
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ========================================
+# LINUX
+# ========================================
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# ========================================
+# TEMPORARY FILES
+# ========================================
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.#*
+\#*#
+
+# ========================================
+# DOCKER
+# ========================================
+.dockerignore
+docker-compose.override.yml
+.docker/
+
+# ========================================
+# KUBERNETES
+# ========================================
+*.kubeconfig
+.kube/
+
+# ========================================
+# CERTIFICATES & KEYS
+# ========================================
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.jks
+*.keystore
+
+# ========================================
+# BACKUP FILES
+# ========================================
+*.bak
+*.backup
+*.old
+
+# ========================================
+# DATABASE
+# ========================================
+*.db
+*.sqlite
+*.sqlite3
+*.sql.gz
+
+# ========================================
+# NODE (si vous avez du frontend)
+# ========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ========================================
+# TESTS
+# ========================================
+test-output/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage/
+
+# ========================================
+# AUTRES
+# ========================================
+*.pid
+*.seed
+*.pid.lock
+.npm
+.eslintcache
+.node_repl_history
+.yarn-integrity
+
+# ========================================
+# NOTES
+# ========================================
+# Ce fichier .gitignore protège:
+# 1. Les variables d'environnement (.env)
+# 2. Les secrets et credentials
+# 3. Les fichiers de configuration locale
+# 4. Les certificats et clés
+# 5. Les fichiers temporaires
+#
+# IMPORTANT: .env.example DOIT être commité
+# pour servir de template à l'équipe
+# ========================================
+
+
 HELP.md
 target/
 .mvn/wrapper/maven-wrapper.jar
@@ -31,3 +256,4 @@ build/
 
 ### VS Code ###
 .vscode/
+

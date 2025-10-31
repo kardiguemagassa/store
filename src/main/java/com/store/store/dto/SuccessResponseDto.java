@@ -22,6 +22,10 @@ import java.time.LocalDateTime;
  *   "timestamp": "2025-10-24T21:30:00",
  *   "data": { "orderId": 123 }
  * }
+ *
+ * @author Kardigué
+ * @version 2.1 - CORRECTED
+ * @since 2025-01-27
  */
 @Data
 @Builder
@@ -36,7 +40,7 @@ public class SuccessResponseDto {
             example = "true"
     )
     @Builder.Default
-    private Boolean success = true;  // ✅ Ajout du champ success
+    private Boolean success = true;
 
     @Schema(
             description = "Message de succès",
@@ -63,8 +67,45 @@ public class SuccessResponseDto {
     )
     private Object data;
 
+    // ========================================================================
+    // MÉTHODES STATIQUES DE CRÉATION (Factory Methods)
+    // ========================================================================
+
     /**
-     * Crée une réponse de succès simple (sans data)
+     * ✅ NOUVELLE MÉTHODE: Crée une réponse de succès simple avec message
+     * Utilisée dans LogoutController.logout()
+     *
+     * @param message Le message de succès
+     * @return SuccessResponseDto avec status 200
+     */
+    public static SuccessResponseDto success(String message) {
+        return SuccessResponseDto.builder()
+                .success(true)
+                .message(message)
+                .status(200)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    /**
+     * ✅ NOUVELLE MÉTHODE: Crée une réponse de succès avec data
+     *
+     * @param message Le message de succès
+     * @param data Les données à retourner
+     * @return SuccessResponseDto avec status 200
+     */
+    public static SuccessResponseDto success(String message, Object data) {
+        return SuccessResponseDto.builder()
+                .success(true)
+                .message(message)
+                .status(200)
+                .timestamp(LocalDateTime.now())
+                .data(data)
+                .build();
+    }
+
+    /**
+     * Crée une réponse de succès générique avec status personnalisé (sans data)
      */
     public static SuccessResponseDto of(String message, int status) {
         return SuccessResponseDto.builder()
@@ -76,7 +117,7 @@ public class SuccessResponseDto {
     }
 
     /**
-     * Crée une réponse de succès avec data
+     * Crée une réponse de succès avec status personnalisé et data
      */
     public static SuccessResponseDto of(String message, int status, Object data) {
         return SuccessResponseDto.builder()
@@ -135,6 +176,43 @@ public class SuccessResponseDto {
                 .status(201)
                 .timestamp(LocalDateTime.now())
                 .data(data)
+                .build();
+    }
+
+    /**
+     * Crée une réponse de mise à jour réussie (200 OK)
+     */
+    public static SuccessResponseDto updated(String message) {
+        return SuccessResponseDto.builder()
+                .success(true)
+                .message(message)
+                .status(200)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    /**
+     * Crée une réponse de mise à jour réussie avec data (200 OK)
+     */
+    public static SuccessResponseDto updated(String message, Object data) {
+        return SuccessResponseDto.builder()
+                .success(true)
+                .message(message)
+                .status(200)
+                .timestamp(LocalDateTime.now())
+                .data(data)
+                .build();
+    }
+
+    /**
+     * Crée une réponse de suppression réussie (200 OK ou 204 No Content)
+     */
+    public static SuccessResponseDto deleted(String message) {
+        return SuccessResponseDto.builder()
+                .success(true)
+                .message(message)
+                .status(200)
+                .timestamp(LocalDateTime.now())
                 .build();
     }
 }
