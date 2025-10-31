@@ -175,7 +175,8 @@ public class OrderServiceImpl implements IOrderService {
             validateOrderUpdateParameters(orderId, newStatus);
 
             Order order = orderRepository.findById(orderId)
-                    .orElseThrow(() -> exceptionFactory.orderNotFound(orderId));
+                    .orElseThrow(() -> exceptionFactory.resourceNotFound(
+                            "Product", "id", orderId.toString()));
 
             // Validation métier de la transition de statut
             validateOrderStatusTransition(order.getOrderStatus(), newStatus);

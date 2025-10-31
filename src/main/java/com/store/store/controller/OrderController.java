@@ -45,6 +45,23 @@ public class OrderController {
     // VALIDATION PRE-CREATION
     // =====================================================
 
+     /*
+    Seulement ces 2 methods avant
+
+    @PostMapping
+    public ResponseEntity<String> createOrder(@RequestBody  OrderRequestDto requestDto) {
+        iOrderService.createOrder(requestDto);
+        return ResponseEntity.ok("Order created successfully!");
+    }
+
+
+
+    @GetMapping
+    public ResponseEntity<List<OrderResponseDto>> loadCustomerOrders() {
+        return ResponseEntity.ok(orderService.getCustomerOrders());
+    }*/
+
+
     /**
      * ✅ Valide une commande avant création
      * Permet au frontend de vérifier la validité avant soumission
@@ -188,8 +205,8 @@ public class OrderController {
     /**
      * Récupère toutes les commandes en attente (ADMIN uniquement)
      */
-    @GetMapping("/pending")
-    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping
+    //@PreAuthorize("hasRole('ADMIN')")
     @Operation(
             summary = "Lister les commandes en attente",
             description = "Récupère toutes les commandes en attente de traitement (accès ADMIN)"

@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
  */
 @Slf4j
 @Service
-public class DeviceInfoExtractor {
+public class DeviceInfoExtractorServiceImpl {
 
     /**
      * Extrait les informations du device depuis le User-Agent.
