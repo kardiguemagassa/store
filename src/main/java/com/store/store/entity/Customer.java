@@ -1,5 +1,6 @@
 package com.store.store.entity;
 
+import com.store.store.enums.RoleType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -9,6 +10,7 @@ import lombok.Setter;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -53,5 +55,38 @@ public class Customer extends BaseEntity {
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<Role> roles = new LinkedHashSet<>();
+
+    public boolean hasRole(RoleType roleType) {
+        return roles.stream()
+                .anyMatch(role -> role.getName() == roleType);
+    }
+
+    public boolean isAdmin() {
+        return hasRole(RoleType.ROLE_ADMIN);
+    }
+
+    public boolean isUser() {
+        return hasRole(RoleType.ROLE_USER);
+    }
+
+    public boolean isManager() {  // AJOUTER
+        return hasRole(RoleType.ROLE_MANAGER);
+    }
+
+    public boolean isEmployee() {  // AJOUTER
+        return hasRole(RoleType.ROLE_EMPLOYEE);
+    }
+
+    public Set<String> getRoleNames() {
+        return roles.stream()
+                .map(role -> role.getName().name())
+                .collect(Collectors.toSet());
+    }
+
+    // Méthode utile pour la hiérarchie
+    public boolean hasMinimumRole(RoleType minimumRole) {  // AJOUTER
+        return roles.stream()
+                .anyMatch(role -> role.getName().getLevel() >= minimumRole.getLevel());
+    }
 
 }

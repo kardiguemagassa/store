@@ -56,11 +56,6 @@ public class CategoryServiceImpl implements ICategoryService {
             throw exceptionFactory.businessError(
                     getLocalizedMessage("error.category.fetch.failed")
             );
-        } catch (Exception e) {
-            log.error("Unexpected error while fetching active categories", e);
-            throw exceptionFactory.businessError(
-                    getLocalizedMessage("error.unexpected.category.fetch")
-            );
         }
     }
 
@@ -103,11 +98,6 @@ public class CategoryServiceImpl implements ICategoryService {
             throw exceptionFactory.businessError(
                     getLocalizedMessage("error.category.fetch.byCode.failed", code)
             );
-        } catch (Exception e) {
-            log.error("Unexpected error while fetching category by code: {}", code, e);
-            throw exceptionFactory.businessError(
-                    getLocalizedMessage("error.unexpected.category.fetch.byCode", code)
-            );
         }
     }
 
@@ -131,11 +121,6 @@ public class CategoryServiceImpl implements ICategoryService {
             log.error("Database error while fetching category by ID: {}", id, e);
             throw exceptionFactory.businessError(
                     getLocalizedMessage("error.category.fetch.byId.failed")
-            );
-        } catch (Exception e) {
-            log.error("Unexpected error while fetching category by ID: {}", id, e);
-            throw exceptionFactory.businessError(
-                    getLocalizedMessage("error.unexpected.category.fetch.byId")
             );
         }
     }
@@ -180,7 +165,7 @@ public class CategoryServiceImpl implements ICategoryService {
             category.setCode(dto.getCode().toUpperCase());
             category.setName(dto.getName());
             category.setDescription(dto.getDescription());
-            category.setIcon(dto.getIcon() != null ? dto.getIcon() : "📦"); // Icône par défaut
+            category.setIcon(dto.getIcon() != null ? dto.getIcon() : "📦");
             category.setDisplayOrder(dto.getDisplayOrder() != null ? dto.getDisplayOrder() : 999);
             category.setIsActive(true);
 
@@ -195,11 +180,6 @@ public class CategoryServiceImpl implements ICategoryService {
             log.error("Database error while creating category", e);
             throw exceptionFactory.businessError(
                     getLocalizedMessage("error.category.create.failed")
-            );
-        } catch (Exception e) {
-            log.error("Unexpected error while creating category", e);
-            throw exceptionFactory.businessError(
-                    getLocalizedMessage("error.unexpected.category.create")
             );
         }
     }
@@ -251,11 +231,6 @@ public class CategoryServiceImpl implements ICategoryService {
             throw exceptionFactory.businessError(
                     getLocalizedMessage("error.category.update.failed")
             );
-        } catch (Exception e) {
-            log.error("Unexpected error while updating category ID: {}", id, e);
-            throw exceptionFactory.businessError(
-                    getLocalizedMessage("error.unexpected.category.update")
-            );
         }
     }
 
@@ -305,7 +280,7 @@ public class CategoryServiceImpl implements ICategoryService {
                             "Category", "id", id.toString()
                     ));
 
-            // Vérifier si la catégorie a des produits
+            // ✅ CORRIGÉ : Utilisez countByCategoryId (votre méthode existante)
             Long productCount = productRepository.countByCategoryId(id);
             if (productCount > 0) {
                 throw exceptionFactory.businessError(
@@ -323,11 +298,6 @@ public class CategoryServiceImpl implements ICategoryService {
             log.error("Database error while deleting category ID: {}", id, e);
             throw exceptionFactory.businessError(
                     getLocalizedMessage("error.category.delete.failed")
-            );
-        } catch (Exception e) {
-            log.error("Unexpected error while deleting category ID: {}", id, e);
-            throw exceptionFactory.businessError(
-                    getLocalizedMessage("error.unexpected.category.delete")
             );
         }
     }
@@ -373,11 +343,6 @@ public class CategoryServiceImpl implements ICategoryService {
             log.error("File system error while uploading icon for category ID: {}", categoryId, e);
             throw exceptionFactory.businessError(
                     getLocalizedMessage("error.category.icon.save.failed")
-            );
-        } catch (Exception e) {
-            log.error("Unexpected error while uploading icon for category ID: {}", categoryId, e);
-            throw exceptionFactory.businessError(
-                    getLocalizedMessage("error.unexpected.category.icon.upload")
             );
         }
     }
@@ -447,7 +412,6 @@ public class CategoryServiceImpl implements ICategoryService {
                     getLocalizedMessage("validation.category.icon.type.invalid"));
         }
 
-        // Limite : 2 MB (les icônes sont plus petites que les images produits)
         if (iconFile.getSize() > 2 * 1024 * 1024) {
             throw exceptionFactory.validationError("iconFile",
                     getLocalizedMessage("validation.category.icon.size.tooLarge", 2));
@@ -492,7 +456,6 @@ public class CategoryServiceImpl implements ICategoryService {
         dto.setDisplayOrder(category.getDisplayOrder());
         dto.setIsActive(category.getIsActive());
 
-        // ✅ CORRIGÉ : Utiliser countByCategoryId au lieu de countByCategory
         Long count = productRepository.countByCategoryId(category.getCategoryId());
         dto.setProductCount(count);
 

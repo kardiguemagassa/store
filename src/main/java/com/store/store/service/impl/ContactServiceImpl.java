@@ -93,7 +93,8 @@ public class ContactServiceImpl implements IContactService {
             validateUpdateParameters(contactId, status);
 
             Contact contact = contactRepository.findById(contactId)
-                    .orElseThrow(() -> exceptionFactory.contactNotFound(contactId));
+                    .orElseThrow(() -> exceptionFactory.resourceNotFound(
+                            "Product", "id", contactId.toString()));
 
             // Validation métier : vérifier que le statut est valide
             validateStatusTransition(contact.getStatus(), status);

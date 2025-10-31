@@ -5,11 +5,13 @@ import com.store.store.dto.ProfileRequestDto;
 import com.store.store.dto.ProfileResponseDto;
 import com.store.store.entity.Address;
 import com.store.store.entity.Customer;
+
 import com.store.store.exception.BusinessException;
 import com.store.store.exception.ExceptionFactory;
 
 import com.store.store.repository.CustomerRepository;
 import com.store.store.service.IProfileService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -62,14 +64,34 @@ public class ProfileServiceImpl implements IProfileService {
         }
     }
 
+
+    /*@Override
+    @Transactional
+    public ProfileResponseDto updateProfile(ProfileRequestDto profileRequestDto) {
+
+        log.info("Updating profile for authenticated customer");
+
+        Customer customer = getAuthenticatedCustomer();
+        boolean isEmailUpdated = !customer.getEmail().equals(profileRequestDto.getEmail().trim());
+
+        // Vérifier si l'email existe déjà (sauf pour le client actuel)
+        if (isEmailUpdated && customerRepository.existsByEmailAndCustomerIdNot(profileRequestDto.getEmail(), customer.getCustomerId())) {
+            throw exceptionFactory.businessError(
+                    getLocalizedMessage("error.profile.email.already.exists", profileRequestDto.getEmail())
+            );
+        }
+
+        // Mise à jour
+        updateCustomerFromRequest(customer, profileRequestDto);
+        return mapCustomerToProfileResponseDto(customerRepository.save(customer));
+    }*/
+
     @Override
     @Transactional
     public ProfileResponseDto updateProfile(ProfileRequestDto profileRequestDto) {
         try {
-            log.info("Updating profile for authenticated customer");
 
-            // Validation des données d'entrée
-            validateProfileRequest(profileRequestDto);
+            log.info("Updating profile for authenticated customer");
 
             Customer customer = getAuthenticatedCustomer();
             boolean isEmailUpdated = !customer.getEmail().equals(profileRequestDto.getEmail().trim());
@@ -134,47 +156,6 @@ public class ProfileServiceImpl implements IProfileService {
         }
     }
 
-    //VALIDATION
-    private void validateProfileRequest(ProfileRequestDto profileRequestDto) {
-        if (profileRequestDto == null) {
-            throw exceptionFactory.validationError("profileRequestDto",
-                    getLocalizedMessage("validation.profile.request.required"));
-        }
-
-        if (profileRequestDto.getName() == null || profileRequestDto.getName().trim().isEmpty()) {
-            throw exceptionFactory.validationError("name",
-                    getLocalizedMessage("validation.profile.name.required"));
-        }
-
-        if (profileRequestDto.getEmail() == null || profileRequestDto.getEmail().trim().isEmpty()) {
-            throw exceptionFactory.validationError("email",
-                    getLocalizedMessage("validation.profile.email.required"));
-        }
-
-        if (profileRequestDto.getMobileNumber() == null || profileRequestDto.getMobileNumber().trim().isEmpty()) {
-            throw exceptionFactory.validationError("mobileNumber",
-                    getLocalizedMessage("validation.profile.mobileNumber.required"));
-        }
-
-        // Validation de l'adresse complète ou absente
-        if (hasPartialAddressData(profileRequestDto)) {
-            throw exceptionFactory.validationError("address",
-                    getLocalizedMessage("validation.profile.address.incomplete"));
-        }
-
-        // Validation du format de l'email
-        if (!isValidEmail(profileRequestDto.getEmail())) {
-            throw exceptionFactory.validationError("email",
-                    getLocalizedMessage("validation.profile.email.invalid"));
-        }
-
-        // Validation du format du numéro de mobile
-        if (!isValidMobileNumber(profileRequestDto.getMobileNumber())) {
-            throw exceptionFactory.validationError("mobileNumber",
-                    getLocalizedMessage("validation.profile.mobileNumber.invalid"));
-        }
-    }
-
     private void updateCustomerFromRequest(Customer customer, ProfileRequestDto profileRequestDto) {
         customer.setName(profileRequestDto.getName().trim());
         customer.setEmail(profileRequestDto.getEmail().trim());
@@ -221,14 +202,6 @@ public class ProfileServiceImpl implements IProfileService {
         boolean hasAllData = hasCompleteAddressData(dto);
 
         return hasSomeData && !hasAllData;
-    }
-
-    private boolean isValidEmail(String email) {
-        return email != null && email.matches("^[A-Za-z0-9+_.-]+@(.+)$");
-    }
-
-    private boolean isValidMobileNumber(String mobileNumber) {
-        return mobileNumber != null && mobileNumber.matches("^\\d{10}$");
     }
 
     private ProfileResponseDto mapCustomerToProfileResponseDto(Customer customer) {

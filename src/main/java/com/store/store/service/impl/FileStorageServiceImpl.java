@@ -17,20 +17,16 @@ import java.util.UUID;
 
 @Service
 @Slf4j
-public class FileStorageService {
+public class FileStorageServiceImpl {
 
     private final Path fileStorageLocation;
     private final List<String> allowedExtensions = List.of("jpg", "jpeg", "png", "webp", "gif");
-    private final long maxFileSize = 5 * 1024 * 1024; // 5MB
 
-    public FileStorageService(@Value("${app.file.upload-dir:./uploads}") String uploadDir) {
+    public FileStorageServiceImpl(@Value("${app.file.upload-dir:./uploads}") String uploadDir) {
         try {
-            this.fileStorageLocation = Paths.get(uploadDir)
-                    .toAbsolutePath()
-                    .normalize();
-
+            this.fileStorageLocation = Paths.get(uploadDir).toAbsolutePath().normalize();
             Files.createDirectories(this.fileStorageLocation);
-            log.info("📁 Dossier de stockage configuré: {}", this.fileStorageLocation);
+            log.info("Dossier de stockage configuré: {}", this.fileStorageLocation);
 
         } catch (IOException e) {
             throw new FileStorageException("Impossible de créer le dossier de stockage: " + uploadDir, e);
@@ -38,6 +34,7 @@ public class FileStorageService {
     }
 
     public String storeProductImage(MultipartFile file) throws IOException {
+
         validateFile(file);
 
         String fileExtension = getFileExtension(file.getOriginalFilename());
@@ -47,11 +44,12 @@ public class FileStorageService {
         Files.createDirectories(targetLocation.getParent());
         Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
-        log.info("✅ Image sauvegardée: {}", fileName);
+        log.info("Image sauvegardée: {}", fileName);
         return String.format("/uploads/products/%s", fileName);
     }
 
     public void deleteProductImage(String imageUrl) {
+
         if (imageUrl == null || imageUrl.isEmpty()) return;
 
         try {
@@ -60,25 +58,27 @@ public class FileStorageService {
 
             // Sécurité : vérifier que le chemin est bien dans le dossier autorisé
             if (!filePath.startsWith(this.fileStorageLocation)) {
-                log.warn("🚨 Tentative d'accès à un chemin non autorisé: {}", filePath);
+                log.warn("Tentative d'accès à un chemin non autorisé: {}", filePath);
                 return;
             }
 
             if (Files.exists(filePath)) {
                 Files.delete(filePath);
-                log.info("🗑️ Image supprimée: {}", fileName);
+                log.info("Image supprimée: {}", fileName);
             }
         } catch (IOException e) {
-            log.warn("⚠️ Impossible de supprimer l'image: {}", imageUrl, e);
+            log.warn("Impossible de supprimer l'image: {}", imageUrl, e);
         }
     }
 
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            // ✅ CORRECTION : Utiliser le constructeur avec field + message
+            //constructeur avec field + message
             throw new ValidationException("file", "Le fichier est vide");
         }
 
+        // 5MB
+        long maxFileSize = 5 * 1024 * 1024;
         if (file.getSize() > maxFileSize) {
             throw new ValidationException("file",
                     "Fichier trop volumineux. Maximum: " + (maxFileSize / 1024 / 1024) + "MB");
@@ -99,7 +99,7 @@ public class FileStorageService {
 
     private String generateUniqueFileName(String extension, String prefix) {
         return String.format("%s_%s.%s",
-                prefix,
+
                 UUID.randomUUID().toString(),
                 extension.toLowerCase()
         );

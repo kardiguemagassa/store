@@ -3,21 +3,25 @@ package com.store.store.controller;
 import com.store.store.constants.ApplicationConstants;
 import com.store.store.dto.*;
 import com.store.store.entity.Customer;
+import com.store.store.enums.RoleType;
+import com.store.store.exception.BusinessException;
 import com.store.store.exception.ExceptionFactory;
 import com.store.store.repository.CustomerRepository;
 import com.store.store.security.CustomerUserDetails;
-import com.store.store.service.ICategoryService;
+
 import com.store.store.service.IContactService;
 import com.store.store.service.IOrderService;
-import com.store.store.service.RoleAssignmentService;
+import com.store.store.service.IRoleAssignmentService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -38,13 +42,54 @@ public class AdminController {
     private final IContactService iContactService;
     private final ExceptionFactory exceptionFactory;
     private final CustomerRepository customerRepository;
-    private final RoleAssignmentService roleAssignmentService;
+    private final IRoleAssignmentService roleAssignmentService;
 
     // =====================================================
     // GESTION DES UTILISATEURS
     // =====================================================
 
-    @Operation(summary = "Promouvoir un utilisateur en ADMIN")
+    // ✅ EXISTANT : Assigner n'importe quel rôle
+    @PostMapping("/users/{customerId}/roles/{roleType}")
+    @Operation(summary = "Assigner un rôle à un utilisateur")
+    public ResponseEntity<SuccessResponseDto> assignRole(
+            @PathVariable Long customerId,
+            @PathVariable RoleType roleType,
+            @AuthenticationPrincipal CustomerUserDetails admin) {
+
+        roleAssignmentService.assignRole(customerId, roleType);
+
+        log.info("Admin {} assigned role {} to user {}",
+                admin.getUsername(), roleType, customerId);
+
+        return ResponseEntity.ok(SuccessResponseDto.success(
+                "Rôle " + roleType.getDisplayName() + " attribué avec succès"
+        ));
+    }
+
+    @PostMapping("/users/{customerId}/promote")
+    @Operation(summary = "Promouvoir un utilisateur au niveau supérieur")
+    public ResponseEntity<PromotionResponseDto> promoteUser(
+            @PathVariable Long customerId,
+            @AuthenticationPrincipal CustomerUserDetails admin) {
+
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> exceptionFactory.resourceNotFound(
+                        "Utilisateur", "id", customerId.toString()
+                ));
+
+        RoleType nextRole = determineNextRole(customer);
+
+        roleAssignmentService.assignRole(customerId, nextRole);
+
+        PromotionResponseDto response = PromotionResponseDto.from(
+                customer,
+                nextRole,
+                admin.getUsername()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/users/{userId}/promote-to-admin")
     public ResponseEntity<PromotionResponseDto> promoteToAdmin(
             @PathVariable @Min(1) Long userId,
@@ -59,7 +104,11 @@ public class AdminController {
                         "Utilisateur", "id", userId.toString()
                 ));
 
-        PromotionResponseDto response = PromotionResponseDto.from(promotedUser, adminUser.getUsername());
+        PromotionResponseDto response = PromotionResponseDto.from(
+                promotedUser,
+                RoleType.ROLE_ADMIN,
+                adminUser.getUsername()
+        );
 
         return ResponseEntity.ok(response);
     }
@@ -80,16 +129,47 @@ public class AdminController {
                         "Utilisateur", "id", userId.toString()
                 ));
 
-        PromotionResponseDto response = PromotionResponseDto.builder()
-                .message("Privilèges ADMIN retirés avec succès")
-                .userEmail(demotedUser.getEmail())
-                .promotedBy(adminUser.getUsername())
-                .timestamp(java.time.LocalDateTime.now())
-                .build();
+        PromotionResponseDto response = PromotionResponseDto.demotion(
+                demotedUser,
+                RoleType.ROLE_ADMIN,  // Rôle retiré
+                adminUser.getUsername()
+        );
 
         return ResponseEntity.ok(response);
     }
 
+
+    @DeleteMapping("/users/{customerId}/roles/{roleType}")
+    public ResponseEntity<?> removeRole(@PathVariable Long customerId, @PathVariable RoleType roleType) {
+
+        roleAssignmentService.removeRole(customerId, roleType);
+
+        return ResponseEntity.ok(SuccessResponseDto.success(
+                "Role " + roleType.getDisplayName() + " removed successfully"
+        ));
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<Page<CustomerWithRolesDto>> getAllUsers(@PageableDefault(size = 20) Pageable pageable) {
+
+        Page<CustomerWithRolesDto> users = roleAssignmentService.getAllCustomersWithRoles(pageable);
+        return ResponseEntity.ok(users);
+    }
+
+    // Déterminer le prochain rôle dans la hiérarchie
+    private RoleType determineNextRole(Customer customer) {
+        if (customer.isAdmin()) {
+            throw exceptionFactory.businessError("L'utilisateur a déjà le rôle le plus élevé");
+        }
+        if (customer.isManager()) {
+            return RoleType.ROLE_ADMIN;
+        }
+        if (customer.isEmployee()) {
+            return RoleType.ROLE_MANAGER;
+        }
+        // Par défaut, USER → EMPLOYEE
+        return RoleType.ROLE_EMPLOYEE;
+    }
 
     // =====================================================
     // GESTION DES COMMANDES
