@@ -1,0 +1,242 @@
+# ========================================
+# APPLICATION CONFIGURATION
+# Store E-commerce Backend API
+# Version: 2.3 - FIXED
+# Author: Kardigué
+# Date: 2025-01-27
+# ========================================
+
+spring:
+  application:
+    name: store
+
+  # ✅ CORRECTION: mvc doit être au même niveau que application, pas en dessous
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
+  # ========================================
+  # DATABASE CONFIGURATION
+  # ========================================
+  datasource:
+    url: jdbc:mysql://${DATABASE_HOST:localhost}:${DATABASE_PORT:3306}/${DATABASE_NAME:eazystore}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${DATABASE_USERNAME:eazybytes}
+    password: ${DATABASE_PASSWORD:eazybytes}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  # ========================================
+  # JPA / HIBERNATE CONFIGURATION
+  # ========================================
+  jpa:
+    show-sql: ${JPA_SHOW_SQL:true}
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: ${HIBERNATE_FORMAT_SQL:true}
+        dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  # ========================================
+  # UPLOAD
+  # ========================================
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+  # ✅ CORRECTION: file n'est pas une propriété Spring standard
+  # Utiliser store.file à la place (voir plus bas)
+
+  # ========================================
+  # INTERNATIONALIZATION (i18n)
+  # ========================================
+  messages:
+    basename: messages
+    encoding: UTF-8
+    fallback-to-system-locale: false
+    cache-duration: 10s
+
+  # ========================================
+  # EMAIL CONFIGURATION (Gmail)
+  # ========================================
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:magassakara@gmail.com}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+  # ========================================
+  # ASYNC CONFIGURATION
+  # ========================================
+  task:
+    execution:
+      pool:
+        core-size: 2
+        max-size: 5
+        queue-capacity: 100
+
+  # ========================================
+  # PROFILES
+  # ========================================
+  profiles:
+    active: ${SPRING_PROFILE:dev}
+
+# ========================================
+# SERVER CONFIGURATION
+# ========================================
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param
+
+# ========================================
+# LOGGING CONFIGURATION
+# ========================================
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
+    com.store.store: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: ${JPA_SHOW_SQL:DEBUG}
+  pattern:
+    console: "%green(%d{HH:mm:ss.SSS}) %blue(%-5level) %red([%thread]) %yellow(%logger{15}) - %msg%n"
+    file: '{"timestamp":"%d{yyyy-MM-dd HH:mm:ss}","level":"%p","logger":"%c","message":"%m"}'
+  file:
+    name: ${LOG_FILE_NAME:./logs/app.log}
+    max-size: 10MB
+    max-history: 30
+
+# ========================================
+# ACTUATOR CONFIGURATION
+# ========================================
+management:
+  endpoints:
+    web:
+      base-path: /store/actuator
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+    configprops:
+      show-values: always
+    env:
+      show-values: always
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: Backend Project for Store E-commerce application
+    version: 2.3.0
+    contact:
+      email: dev_magassakara@gmail.com
+      phone: '+652185505'
+      address: '8 Av de la fontaine rene 95160 Montmorency'
+
+# ========================================
+# STORE APPLICATION - CUSTOM CONFIGURATION
+# ========================================
+store:
+  # JWT Configuration
+  jwt:
+    secret: ${JWT_SECRET:VotreCleSuperSecreteQuiDoitEtreTresLongueEtComplexePourLaProductionAvecAuMoins256Bits}
+    expiration-ms: 900000 # 15 minutes
+    issuer: store-api
+
+  # Refresh Token Configuration
+  refresh-token:
+    expiration-ms: 604800000 # 7 jours
+    max-active-tokens: 5
+    rotation-enabled: true
+    ip-tracking-enabled: true
+    cleanup-enabled: true
+    cleanup-cron: '0 0 3 * * ?'
+
+  # Security Alerts
+  security:
+    alert:
+      from-email: security@yourstore.com
+
+  # CORS Configuration
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+
+  # AJOUT: Configuration Upload (déplacé depuis spring.file)
+  file:
+    upload-dir: ./uploads
+    allowed-types:
+      - image/jpeg
+      - image/png
+      - image/webp
+
+  # Scheduler Configuration
+  scheduler:
+    refresh-token-cleanup:
+      enabled: true
+      cron: '0 0 2 * * ?'
+
+# ========================================
+# STRIPE CONFIGURATION
+# ========================================
+stripe:
+  api-key: ${STRIPE_API_KEY:}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+  timeout-seconds: 30
+  max-retries: 3
+
+# ========================================
+# RESILIENCE4J - RATE LIMITING
+# ========================================
+resilience4j:
+  ratelimiter:
+    instances:
+      refresh:
+        limit-for-period: 10
+        limit-refresh-period: 60s
+        timeout-duration: 0s
+      login:
+        limit-for-period: 5
+        limit-refresh-period: 60s
+        timeout-duration: 0s
+
+# ========================================
+# SPRINGDOC / SWAGGER CONFIGURATION
+# ========================================
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+
+# ========================================
+# CONTACT INFORMATION
+# ========================================
+contact:
+  phone: '+652185505'
+  email: dev_magassakara@gmail.com
+  address: '8 Av de la fontaine rene 95160 Montmorency'

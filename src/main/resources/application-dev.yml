@@ -1,0 +1,57 @@
+# ========================================
+# application-dev.yml
+# Configuration pour l'environnement de DÉVELOPPEMENT
+# ========================================
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/eazystore?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: eazybytes
+    password: eazybytes
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update  # Mise à jour auto du schéma en dev
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: 8080
+  error:
+    include-stacktrace: always  # Stack trace visible en dev
+
+logging:
+  level:
+    root: INFO
+    com.store.store: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'  # Tous les endpoints actuator en dev
+  endpoint:
+    health:
+      show-details: always
+
+# Désactiver le rate limiting en dev
+resilience4j:
+  ratelimiter:
+    instances:
+      refresh:
+        limit-for-period: 1000
+      login:
+        limit-for-period: 1000
+
+# ========================================
+# NOTES DEV
+# ========================================
+# - Credentials en clair OK pour dev local
+# - show-sql activé pour debugging
+# - Rate limiting désactivé pour tests
+# - Stack traces complètes activées
