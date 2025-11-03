@@ -33,32 +33,21 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Configuration Spring Security pour API REST stateless avec JWT.
+ * The SecurityConfig class configures security settings for the application.
+ * It enables Web security, method security, and sets up various components such as authentication,
+ * authorization, CORS, CSRF protection, session management, and security filters.
  *
- * ARCHITECTURE:
- * - Stateless (pas de session)
- * Access Token (JWT) : localStorage (15 min)
- * Refresh Token : Cookie HttpOnly (7 jours)
- *  CSRF Token : Cookie + Header X-XSRF-TOKEN
- * - JWT Authentication uniquement
- * - CORS configuré pour SPA
- * - Rate limiting via Resilience4j
- * - Authorization basée sur les rôles
- *
- * SÉCURITÉ:
- * - CSRF désactivé (JWT est immune)
- * - Session STATELESS
- * - Form Login désactivé
- * - HTTP Basic désactivé
- * - Passwords hashés avec BCrypt (cost factor 12)
- *
- * PERFORMANCE:
- * - Chemins publics ignorés par JwtAuthenticationFilter
- * - SecurityContext thread-local (pas de contention)
+ * This configuration includes:
+ * - Custom authentication and authorization settings.
+ * - JWT token-based stateless authentication.
+ * - Support for method-level security annotations (e.g., @Secured, @RolesAllowed).
+ * - CORS configurations for handling cross-origin requests.
+ * - CSRF protection using cookies.
+ * - Customized exception handling mechanisms.
  *
  * @author Kardigué
  * @version 3.0 - Production Ready
- * @since 2025-01-27
+ * @since 2025-10-27
  */
 @Configuration
 @EnableWebSecurity
@@ -79,71 +68,58 @@ public class SecurityConfig {
     private String allowedOrigins;
 
     /**
-     * Configuration de la chaîne de filtres de sécurité.
+     * Configures the security filter chain for the application.
+     * This method sets up CSRF protection with cookies, CORS configuration, stateless session management,
+     * exception handling, authentication providers, authorization rules, and disables form login and HTTP basic authentication.
      *
-     * ORDRE DES FILTRES:
-     * 1. CorsFilter (CORS headers)
-     * 2. JwtAuthenticationFilter (notre filtre custom)
-     * 3. UsernamePasswordAuthenticationFilter (par défaut, mais disabled)
-     * 4. ExceptionTranslationFilter (gestion erreurs 401/403)
-     * 5. FilterSecurityInterceptor (authorization finale)
+     * @param http the {@link HttpSecurity} object used to configure the security settings
+     * @return the configured {@link SecurityFilterChain} for the application
+     * @throws Exception if an error occurs during the configuration of the security filter chain
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-        // ✅ Configuration CSRF avec Cookies
+        // Configuration CSRF avec Cookies
         CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
         requestHandler.setCsrfRequestAttributeName("_csrf");
 
         http
-                // ═══════════════════════════════════════════════════════
                 // CSRF - ACTIVÉ avec Cookies
-                // ═══════════════════════════════════════════════════════
                 .csrf(csrf -> csrf
-                        // ✅ Cookie CSRF (accessible au JavaScript pour l'envoyer)
+                        // Cookie CSRF (accessible au JavaScript pour l'envoyer)
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(requestHandler)
-                        // ✅ Ignorer CSRF pour les endpoints publics
+                        // Ignorer CSRF pour les endpoints publics
                         .ignoringRequestMatchers(publicPaths.toArray(new String[0]))
                 )
 
-                // ═══════════════════════════════════════════════════════
                 // CORS
-                // ═══════════════════════════════════════════════════════
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // ═══════════════════════════════════════════════════════
                 // SESSION - STATELESS (malgré les cookies)
-                // ═══════════════════════════════════════════════════════
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // ═══════════════════════════════════════════════════════
                 // EXCEPTION HANDLING
-                // ═══════════════════════════════════════════════════════
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint))
 
-                // ═══════════════════════════════════════════════════════
                 // AUTHORIZATION
-                // ═══════════════════════════════════════════════════════
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(publicPaths.toArray(new String[0])).permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/store/actuator/**").hasRole("OPS_ENG")
+                        //.requestMatchers("/store/actuator/**").hasRole("OPS_ENG")
+                        .requestMatchers("/store/actuator/**").hasRole("ADMIN")
+                        //http://localhost:8080/swagger-ui/index.html#/
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**")
                         .permitAll()
                         .anyRequest().hasAnyRole("USER", "ADMIN"))
 
-                // ═══════════════════════════════════════════════════════
                 // FILTRES
-                // ═══════════════════════════════════════════════════════
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
-                // ═══════════════════════════════════════════════════════
                 // DÉSACTIVER Form Login et HTTP Basic
-                // ═══════════════════════════════════════════════════════
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable);
 
@@ -151,7 +127,10 @@ public class SecurityConfig {
     }
 
     /**
-     * Provider d'authentification avec chargement des users depuis la DB.
+     * Configures and provides an AuthenticationProvider bean.
+     * The configured provider uses a custom UserDetailsService and a BCrypt password encoder.
+     *
+     * @return an instance of {@link AuthenticationProvider} that handles user authentication logic
      */
     @Bean
     public AuthenticationProvider authenticationProvider() {
@@ -162,7 +141,12 @@ public class SecurityConfig {
     }
 
     /**
-     * Authentication Manager (utilisé dans AuthController pour le login).
+     * Creates and provides an {@link AuthenticationManager} bean.
+     * This method retrieves the {@link AuthenticationManager} from the provided {@link AuthenticationConfiguration}.
+     *
+     * @param config the {@link AuthenticationConfiguration} containing the authentication setup and manager
+     * @return an instance of {@link AuthenticationManager} for handling authentication processes
+     * @throws Exception if an error occurs during the retrieval of the {@link AuthenticationManager}
      */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
@@ -170,20 +154,12 @@ public class SecurityConfig {
     }
 
     /**
-     * ✅ AJOUT: CompromisedPasswordChecker utilisant HaveIBeenPwned API
+     * Provides an instance of {@link CompromisedPasswordChecker}.
+     * This bean implements a password checking mechanism that integrates
+     * with the "Have I Been Pwned" API to determine whether a given password
+     * has been compromised in known data breaches.
      *
-     * Vérifie si un mot de passe a été compromis dans des fuites de données.
-     * Utilise l'API publique de Troy Hunt (haveibeenpwned.com).
-     *
-     * SÉCURITÉ:
-     * - Envoie uniquement les 5 premiers caractères du hash SHA-1
-     * - Ne transmet JAMAIS le mot de passe en clair
-     * - Conforme RGPD (k-anonymity)
-     *
-     * PERFORMANCE:
-     * - Cache les résultats localement
-     * - Timeout de 5 secondes
-     * - Fallback si API indisponible
+     * @return an instance of {@link CompromisedPasswordChecker} for verifying compromised passwords
      */
     @Bean
     public CompromisedPasswordChecker compromisedPasswordChecker() {
@@ -191,12 +167,10 @@ public class SecurityConfig {
     }
 
     /**
-     * Encoder BCrypt avec cost factor 12 (équilibre sécurité/performance).
+     * Creates and provides a PasswordEncoder bean.
+     * This bean sets up a BCryptPasswordEncoder with a specified strength for encoding passwords.
      *
-     * SÉCURITÉ:
-     * - BCrypt avec salt automatique
-     * - Cost factor 12 = ~250ms par hash (résistant aux attaques brute force)
-     * - Augmenter à 14 si serveur puissant (>500ms par hash)
+     * @return an instance of {@link PasswordEncoder} configured with BCrypt hashing
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -204,32 +178,23 @@ public class SecurityConfig {
     }
 
     /**
-     * Configuration CORS pour permettre les requêtes cross-origin depuis le SPA.
-     *Configuration CORS pour JWT + Cookies + CSRF
-     * PRODUCTION:
-     * Remplacer setAllowedOriginPatterns(List.of("*")) par des origines spécifiques:
-     * - https://app.mondomaine.com
-     * - https://www.mondomaine.com
+     * Configures the Cross-Origin Resource Sharing (CORS) settings for the application.
+     * This method sets up allowed origins, HTTP methods, request headers, response headers,
+     * credentials, and pre-flight request caching duration for handling cross-origin requests.
+     *
+     * @return an instance of {@link CorsConfigurationSource} with the configured CORS settings
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // ═══════════════════════════════════════════════════════
         // ORIGINES - Spécifiques (jamais "*" avec credentials)
-        // ═══════════════════════════════════════════════════════
         config.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
 
-        // ═══════════════════════════════════════════════════════
-        // MÉTHODES HTTP
-        // ═══════════════════════════════════════════════════════
-        config.setAllowedMethods(Arrays.asList(
-                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
-        ));
+        // METHODS HTTP
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
-        // ═══════════════════════════════════════════════════════
         // HEADERS AUTORISÉS (Requête Frontend → Backend)
-        // ═══════════════════════════════════════════════════════
         config.setAllowedHeaders(Arrays.asList(
                 "Authorization",           // JWT Bearer token
                 "Content-Type",           // application/json
@@ -238,27 +203,22 @@ public class SecurityConfig {
                 "X-Requested-With",       // AJAX
                 "Access-Control-Request-Method",
                 "Access-Control-Request-Headers",
-                "X-XSRF-TOKEN"            // ✅ CSRF Token (IMPORTANT pour cookies)
+                "X-XSRF-TOKEN"            // CSRF Token (IMPORTANT pour cookies)
         ));
 
-        // ═══════════════════════════════════════════════════════
         // HEADERS EXPOSÉS (Réponse Backend → Frontend)
-        // ═══════════════════════════════════════════════════════
         config.setExposedHeaders(Arrays.asList(
                 "Authorization",          // JWT dans réponse
-                "X-XSRF-TOKEN",           // ✅ CSRF Token dans réponse
-                "Set-Cookie"              // ✅ Cookies (refresh token)
+                "X-XSRF-TOKEN",           // CSRF Token dans réponse
+                "Set-Cookie"              // Cookies (refresh token)
         ));
 
-        // ═══════════════════════════════════════════════════════
+
         // CREDENTIALS - TRUE pour Cookies
-        // ═══════════════════════════════════════════════════════
-        // ✅ IMPORTANT: Permet l'envoi/réception de cookies
+        // IMPORTANT: Permet l'envoi/réception de cookies
         config.setAllowCredentials(true);
 
-        // ═══════════════════════════════════════════════════════
-        // MAX AGE - Cache Preflight
-        // ═══════════════════════════════════════════════════════
+        // MAX AGE - Cache Preflight // Cache preflight 1 heure (économise les requêtes OPTIONS)
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -266,139 +226,4 @@ public class SecurityConfig {
 
         return source;
     }
-
-    // ========================================
-    //  EN PRODUCTION
-    //# ========================================
-
-    /*@Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-
-        // ✅ PRODUCTION: Charger depuis application.yml
-        List<String> origins = Arrays.asList(allowedOrigins.split(","));
-        config.setAllowedOrigins(origins);
-
-        // ✅ Méthodes HTTP nécessaires
-        config.setAllowedMethods(Arrays.asList(
-                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
-        ));
-
-        // ✅ Headers strictement nécessaires pour JWT
-        config.setAllowedHeaders(Arrays.asList(
-                "Authorization",
-                "Content-Type",
-                "Accept",
-                "Origin",
-                "X-Requested-With",
-                "Access-Control-Request-Method",
-                "Access-Control-Request-Headers"
-        ));
-
-        // ✅ Headers exposés (frontend peut les lire)
-        config.setExposedHeaders(Arrays.asList(
-                "Authorization",
-                "Access-Control-Allow-Origin",
-                "Access-Control-Allow-Credentials"
-        ));
-
-        // ✅ Credentials (pour cookies HttpOnly si nécessaire)
-        config.setAllowCredentials(true);
-
-        // ✅ Cache preflight 1 heure
-        config.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-
-        return source;
-
-
-        # .env.production (NE PAS COMMIT)
-        CORS_ORIGINS=https://app.votredomaine.com,https://www.votredomaine.com
-        JWT_SECRET=VotreCleSecreteTresLongueEtComplexe...
-        DATABASE_URL=jdbc:postgresql://prod-db:5432/store_db
-    }*/
-
-
-
-    // ========================================
-    //  PAS EN PRODUCTION
-    //# ========================================
-    /*@Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-
-        // ═══════════════════════════════════════════════════════════
-        // 1. ORIGINES - STRICTES EN PRODUCTION
-        // ═══════════════════════════════════════════════════════════
-        // ✅ PRODUCTION: Domaines spécifiques uniquement
-        config.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
-        // Exemple: https://app.votredomaine.com, https://www.votredomaine.com
-
-        // ❌ JAMAIS EN PRODUCTION:
-        // config.setAllowedOriginPatterns(Arrays.asList("*"));
-        // config.setAllowedOrigins(Arrays.asList("*"));
-
-        // ═══════════════════════════════════════════════════════════
-        // 2. MÉTHODES HTTP - SPÉCIFIER EXACTEMENT
-        // ═══════════════════════════════════════════════════════════
-        // ✅ PRODUCTION: Liste explicite
-        config.setAllowedMethods(Arrays.asList(
-                "GET",
-                "POST",
-                "PUT",
-                "PATCH",
-                "DELETE",
-                "OPTIONS"
-        ));
-
-        // ❌ JAMAIS EN PRODUCTION:
-        // config.setAllowedMethods(Arrays.asList("*"));
-
-        // ═══════════════════════════════════════════════════════════
-        // 3. HEADERS - LISTE EXPLICITE (SÉCURITÉ)
-        // ═══════════════════════════════════════════════════════════
-        // ✅ PRODUCTION: Headers spécifiques nécessaires
-        config.setAllowedHeaders(Arrays.asList(
-                "Authorization",           // JWT Bearer token
-                "Content-Type",           // application/json
-                "Accept",                 // Types de réponse acceptés
-                "Origin",                 // Origine de la requête
-                "X-Requested-With",       // Identification AJAX
-                "Access-Control-Request-Method",    // Preflight
-                "Access-Control-Request-Headers"    // Preflight
-        ));
-
-        // ❌ ÉVITER EN PRODUCTION (trop permissif):
-        // config.setAllowedHeaders(Arrays.asList("*"));
-
-        // ═══════════════════════════════════════════════════════════
-        // 4. HEADERS EXPOSÉS - CE QUE LE FRONTEND PEUT LIRE
-        // ═══════════════════════════════════════════════════════════
-        // ✅ PRODUCTION: Headers que le frontend doit accéder
-        config.setExposedHeaders(Arrays.asList(
-                "Authorization",                    // JWT dans réponse (refresh)
-                "Access-Control-Allow-Origin",
-                "Access-Control-Allow-Credentials"
-        ));
-
-        // ═══════════════════════════════════════════════════════════
-        // 5. CREDENTIALS - TRUE POUR JWT AVEC REFRESH TOKEN
-        // ═══════════════════════════════════════════════════════════
-        // ✅ PRODUCTION: true si vous utilisez des cookies HttpOnly
-        // ⚠️  ATTENTION: Incompatible avec allowedOrigins("*")
-        config.setAllowCredentials(true);
-
-        // ═══════════════════════════════════════════════════════════
-        // 6. MAX AGE - CACHE PREFLIGHT
-        // ═══════════════════════════════════════════════════════════
-        // ✅ PRODUCTION: 1 heure (économise les requêtes OPTIONS)
-        config.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-
-        return source;
-    }*/
 }
