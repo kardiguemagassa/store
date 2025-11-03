@@ -3,14 +3,13 @@
 # Store E-commerce Backend API
 # Version: 2.3 - FIXED
 # Author: Kardigué
-# Date: 2025-01-27
+# Date: 2025-10-27
 # ========================================
 
 spring:
   application:
     name: store
 
-  # ✅ CORRECTION: mvc doit être au même niveau que application, pas en dessous
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
@@ -51,9 +50,6 @@ spring:
       enabled: true
       max-file-size: 5MB
       max-request-size: 5MB
-
-  # ✅ CORRECTION: file n'est pas une propriété Spring standard
-  # Utiliser store.file à la place (voir plus bas)
 
   # ========================================
   # INTERNATIONALIZATION (i18n)
@@ -184,7 +180,7 @@ store:
   cors:
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
 
-  # AJOUT: Configuration Upload (déplacé depuis spring.file)
+  # Configuration Upload depuis spring.file
   file:
     upload-dir: ./uploads
     allowed-types:

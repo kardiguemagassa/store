@@ -9,10 +9,5 @@ import org.springframework.cache.annotation.EnableCaching;
 @SpringBootApplication
 @EnableCaching
 @EnableConfigurationProperties(value = {ContactInfoDto.class})
-public class StoreApplication {
-
-	public static void main(String[] args) {
-		SpringApplication.run(StoreApplication.class, args);
-	}
-
+public class StoreApplication { public static void main(String[] args) {SpringApplication.run(StoreApplication.class, args);}
 }

@@ -4,10 +4,7 @@ import com.store.store.dto.ProductDto;
 import com.store.store.dto.ProductSearchCriteria;
 import com.store.store.entity.Category;
 import com.store.store.entity.Product;
-import com.store.store.exception.BusinessException;
-import com.store.store.exception.ExceptionFactory;
-import com.store.store.exception.ResourceNotFoundException;
-import com.store.store.exception.ValidationException;
+import com.store.store.exception.*;
 import com.store.store.repository.CategoryRepository;
 import com.store.store.repository.ProductRepository;
 import com.store.store.service.IProductService;
@@ -33,9 +30,43 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Service implementation for managing products, including their retrieval, creation,
+ * updates, and specialized queries such as searching, filtering, and counting. This class
+ * interacts primarily with data repositories, file storage services, and caching layers
+ * to execute business logic related to products.
+ *
+ * Fields:
+ * - productRepository: Repository for performing database operations on the product entity.
+ * - categoryRepository: Repository for interacting with product categories.
+ * - fileStorageService: Service for handling file storage, such as product images.
+ * - exceptionFactory: Factory for creating custom exceptions in business logic flows.
+ * - messageSource: Source for resolving localized messages.
+ * - log: Logger instance for capturing and recording application logs.
+ *
+ * Main features of this class include:
+ * - Searching and filtering products based on various criteria.
+ * - Pagination and sorting support for product queries.
+ * - Managing active, inactive, featured, and sale-related products.
+ * - Performing statistical operations such as counting active, inactive, or out-of-stock products.
+ * - CRUD operations for products, ensuring validation and data integrity.
+ * - Cache management to improve performance and reduce database overhead.
+ *
+ * Transaction Management:
+ * - Read-only transactions are used where data retrieval occurs to optimize resources.
+ * - Write transactions are used when creating or updating products, with appropriate cache evictions.
+ *
+ * This class is designed with caching and business exception management to ensure robust and
+ * scalable operations in product management workflows.
+ *
+ *  @author Kardigué
+ *  * @version 3.0 - Production Ready
+ *  * @since 2025-10-27
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -47,10 +78,17 @@ public class ProductServiceImpl implements IProductService {
     private final ExceptionFactory exceptionFactory;
     private final MessageSource messageSource;
 
-    // =====================================================
-    // ✅ MÉTHODES DE RECHERCHE ET LECTURE
-    // =====================================================
 
+    // RECHERCHE ET LECTURE
+
+    /**
+     * Searches for products based on the provided search criteria and pagination settings.
+     *
+     * @param criteria the criteria containing filters for the product search, such as name, category, price range, or availability
+     * @param pageable the pagination information specifying the page number, size, and sorting order
+     * @return a page containing the products that match the search criteria, transformed into DTOs
+     * @throws BusinessException if an error occurs during the search process
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<ProductDto> searchProducts(ProductSearchCriteria criteria, Pageable pageable) {
@@ -70,7 +108,11 @@ public class ProductServiceImpl implements IProductService {
     }
 
     /**
-     * ✅ NOUVELLE MÉTHODE SANS DÉPRECIATION - Spring Data JPA 3.5.0+
+     * Builds a specification for filtering and querying products based on the provided search criteria.
+     *
+     * @param criteria the product search criteria containing filters such as category, price range, stock availability,
+     *                 active status, and search query for name or description
+     * @return a Specification object for querying products based on the specified criteria
      */
     private Specification<Product> buildSpecification(ProductSearchCriteria criteria) {
         return (root, query, cb) -> {
@@ -119,7 +161,12 @@ public class ProductServiceImpl implements IProductService {
     }
 
     /**
-     * ✅ APPLICATION DU TRI PERSONNALISÉ
+     * Applies sorting to a CriteriaQuery based on the provided ProductSearchCriteria.
+     *
+     * @param query    the CriteriaQuery to which the sorting will be applied
+     * @param cb       the CriteriaBuilder used for constructing query elements
+     * @param root     the root entity in the query representing the Product table
+     * @param criteria the search criteria containing the sort field and direction
      */
     private void applySorting(
             CriteriaQuery<?> query,
@@ -135,7 +182,11 @@ public class ProductServiceImpl implements IProductService {
     }
 
     /**
-     * ✅ EXPRESSION DE TRI EN FONCTION DU CHAMP
+     * Generates a sorting expression based on the given sort criteria and root entity.
+     *
+     * @param root the root entity of the query from which the sort expression will be derived
+     * @param sortBy the sort criteria used to determine the field for sorting
+     * @return an expression representing the sorting field determined by the specified sort criteria
      */
     private Expression<?> getSortExpression(Root<Product> root, ProductSearchCriteria.SortBy sortBy) {
         return switch (sortBy) {
@@ -146,10 +197,16 @@ public class ProductServiceImpl implements IProductService {
         };
     }
 
-    // =====================================================
-    // ✅ MÉTHODES DE LECTURE ESSENTIELLES
-    // =====================================================
+    // MÉTHODES DE LECTURE ESSENTIELLES
 
+    /**
+     * Retrieves a list of all products from the database and transforms them into Product DTOs.
+     * The result is cached unless it is an empty list.
+     *
+     * @return a list of ProductDto objects representing all products,
+     *         or an empty list if no products are found.
+     * @throws BusinessException if an error occurs while fetching the products.
+     */
     @Cacheable(value = "products", unless = "#result.isEmpty()")
     @Override
     @Transactional(readOnly = true)
@@ -169,6 +226,13 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /**
+     * Retrieves a paginated list of all products and transforms them into Product DTOs.
+     *
+     * @param pageable the pagination information specifying the page number, size, and sorting order
+     * @return a Page object containing the Product DTOs for the requested page
+     * @throws BusinessException if an error occurs while fetching the products
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<ProductDto> getAllProducts(Pageable pageable) {
@@ -188,6 +252,15 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /**
+     * Retrieves a product by its unique identifier.
+     *
+     * @param id the unique identifier of the product to be retrieved
+     * @return a {@code ProductDto} representing the product information
+     * @throws IllegalArgumentException if the provided {@code id} is invalid
+     * @throws ResourceNotFoundException if no product is found for the given {@code id}
+     * @throws BusinessException if a database access error occurs during the operation
+     */
     @Cacheable(value = "product", key = "#id")
     @Override
     @Transactional(readOnly = true)
@@ -213,6 +286,12 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /**
+     * Fetches a paginated list of active products.
+     *
+     * @param pageable a Pageable object containing pagination information such as page number and size
+     * @return a Page containing ProductDto objects representing active products
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<ProductDto> getActiveProducts(Pageable pageable) {
@@ -223,10 +302,52 @@ public class ProductServiceImpl implements IProductService {
         return searchProducts(criteria, pageable);
     }
 
-    // =====================================================
-    // ✅ MÉTHODES MÉTIER SPÉCIALISÉES
-    // =====================================================
+    /**
+     * Retrieves a paginated list of inactive products.
+     *
+     * @param pageable the pagination and sorting information
+     * @return a page containing inactive products wrapped in ProductDto
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductDto> getInactiveProducts(Pageable pageable) {
+        log.info("Fetching inactive products with pagination");
 
+        ProductSearchCriteria criteria = ProductSearchCriteria.builder()
+                .activeOnly(false)  // ← On veut les inactifs
+                .build();
+
+        // Utiliser une spec personnalisée pour les inactifs
+        Specification<Product> spec = buildInactiveProductsSpecification();
+        Page<Product> products = productRepository.findAll(spec, pageable);
+
+        log.info("Found {} inactive products", products.getTotalElements());
+        return products.map(this::transformToDTO);
+    }
+
+    /**
+     * Counts the total number of inactive products in the system.
+     *
+     * @return the total count of inactive products as a long value
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public long countInactiveProducts() {
+        long count = productRepository.countInactiveProducts();
+        log.info("Total inactive products: {}", count);
+        return count;
+    }
+
+    // MÉTHODES MÉTIER SPÉCIALISÉES
+
+    /**
+     * Retrieves a paginated list of featured products.
+     * Featured products are determined based on predefined criteria such as availability, stock status,
+     * and popularity.
+     *
+     * @param pageable the pagination and sorting information
+     * @return a paginated list of featured product details as {@code Page<ProductDto>}
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<ProductDto> getFeaturedProducts(Pageable pageable) {
@@ -242,6 +363,12 @@ public class ProductServiceImpl implements IProductService {
         return searchProducts(criteria, pageable);
     }
 
+    /**
+     * Retrieves a paginated list of products that are currently on sale.
+     *
+     * @param pageable the pagination and sorting information
+     * @return a paginated list of products on sale wrapped in a Page of ProductDto
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<ProductDto> getProductsOnSale(Pageable pageable) {
@@ -256,22 +383,42 @@ public class ProductServiceImpl implements IProductService {
         return searchProducts(criteria, pageable);
     }
 
+    /**
+     * Counts the number of products that are currently active in the system.
+     *
+     * @return the total number of active products
+     */
     @Override
     @Transactional(readOnly = true)
     public long countActiveProducts() {
         return productRepository.countActiveProducts();
     }
 
+    /**
+     * Counts the number of products that are currently out of stock.
+     * This method interacts with the product repository to determine the count.
+     *
+     * @return the total number of products that are out of stock
+     */
     @Override
     @Transactional(readOnly = true)
     public long countOutOfStockProducts() {
         return productRepository.countOutOfStockProducts();
     }
 
-    // =====================================================
-    // ✅ CRUD PRINCIPAL
-    // =====================================================
-
+    // CRUD PRINCIPAL
+    /**
+     * Creates a new product based on the provided ProductDto. Validates the input,
+     * ensures product uniqueness by name, associates it with a category, and saves
+     * the product in the database.
+     *
+     * @param productDto the ProductDto object containing details of the product to be created,
+     *                   such as name, description, price, and category information
+     * @return the created ProductDto object containing the saved product details, including its ID
+     * @throws BusinessException if a product with the same name already exists or other business rules are violated
+     * @throws ResourceNotFoundException if the specified category for the product does not exist
+     * @throws DataAccessException if any database errors occur while saving the product
+     */
     @CacheEvict(value = {"products", "productsByCategory"}, allEntries = true)
     @Transactional
     @Override
@@ -303,6 +450,18 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /**
+     * Updates an existing product with the specified ID using the provided product data.
+     * Performs validation on the product ID and product data before updating.
+     * Evicts related caches after a successful update operation.
+     *
+     * @param id the ID of the product to be updated
+     * @param productDto a data transfer object containing the updated product information
+     * @return the updated product as a data transfer object
+     * @throws ResourceNotFoundException if the product with the given ID does not exist
+     * @throws BusinessException if any business validation fails
+     * @throws DataAccessException if a database error occurs during the update
+     */
     @CacheEvict(value = {"product", "products", "productsByCategory"}, key = "#id")
     @Transactional
     @Override
@@ -331,6 +490,17 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /**
+     * Soft deletes a product by its ID. The product is marked as inactive instead of being
+     * permanently removed from the database.
+     * This method evicts the associated cache entries for the product and related lists.
+     *
+     * @param id The unique identifier of the product to be deleted.
+     *           Must not be null or invalid.
+     * @throws IllegalArgumentException If the given product ID is null or invalid.
+     * @throws ResourceNotFoundException If no product with the specified ID exists.
+     * @throws BusinessException If an error occurs during the delete operation.
+     */
     @Caching(evict = {
             @CacheEvict(value = "product", key = "#id"),
             @CacheEvict(value = {"products", "productsByCategory"}, allEntries = true)
@@ -346,7 +516,7 @@ public class ProductServiceImpl implements IProductService {
             product.setIsActive(false);
             productRepository.save(product);
 
-            log.info("✅ Product soft deleted successfully: {}", id);
+            log.info("Product soft deleted successfully: {}", id);
 
         } catch (ResourceNotFoundException e) {
             throw e;
@@ -373,7 +543,7 @@ public class ProductServiceImpl implements IProductService {
             product.setIsActive(true);
             Product savedProduct = productRepository.save(product);
 
-            log.info("✅ Product restored successfully: {}", id);
+            log.info("Product restored successfully: {}", id);
             return transformToDTO(savedProduct);
 
         } catch (ResourceNotFoundException e) {
@@ -384,10 +554,19 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
-    // =====================================================
-    // ✅ GESTION DES IMAGES
-    // =====================================================
-
+    // GESTION DES IMAGES
+    /**
+     * Uploads an image for a specific product. Validates the product ID, stores the uploaded image,
+     * deletes the existing image (if any), updates the product record with the new image URL, and
+     * returns the URL of the newly stored image.
+     *
+     * @param productId the unique identifier of the product for which the image is being uploaded
+     * @param imageFile the multipart file object containing the image to be uploaded
+     * @return the URL of the uploaded image
+     * @throws IOException if an error occurs while storing the image file
+     * @throws ResourceNotFoundException if the product with the given ID does not exist
+     * @throws ValidationException if the product ID validation fails
+     */
     @CacheEvict(value = {"product", "products", "productsByCategory"}, key = "#productId")
     @Transactional
     @Override
@@ -403,12 +582,10 @@ public class ProductServiceImpl implements IProductService {
             product.setImageUrl(imageUrl);
             productRepository.save(product);
 
-            log.info("✅ Image uploaded successfully for product ID: {} -> {}", productId, imageUrl);
+            log.info("Image uploaded successfully for product ID: {} -> {}", productId, imageUrl);
             return imageUrl;
 
-        } catch (ResourceNotFoundException e) {
-            throw e;
-        } catch (ValidationException | IOException e) {
+        } catch (ResourceNotFoundException | ValidationException | IOException e) {
             throw e;
         } catch (Exception e) {
             log.error("Error uploading image for product ID: {}", productId, e);
@@ -418,6 +595,15 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /**
+     * Deletes the image associated with a specific product by its ID. This method
+     * ensures that the image reference in the product's record is removed and updates
+     * the database accordingly. It also evicts related cache entries to maintain consistency.
+     *
+     * @param productId the ID of the product whose image needs to be deleted
+     * @throws ResourceNotFoundException if the product with the specified ID does not exist
+     * @throws DataAccessException if there is a database-related error during the operation
+     */
     @CacheEvict(value = {"product", "products", "productsByCategory"}, key = "#productId")
     @Transactional
     @Override
@@ -431,7 +617,7 @@ public class ProductServiceImpl implements IProductService {
             product.setImageUrl(null);
             productRepository.save(product);
 
-            log.info("✅ Product image deleted successfully: {}", productId);
+            log.info("Product image deleted successfully: {}", productId);
 
         } catch (ResourceNotFoundException e) {
             throw e;
@@ -443,6 +629,15 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /**
+     * Retrieves the image bytes for a specified product using its unique identifier.
+     *
+     * @param productId The unique identifier of the product whose image is to be fetched.
+     * @return A byte array representing the product image.
+     * @throws IllegalArgumentException if the productId is invalid.
+     * @throws ResourceNotFoundException if the product image URL or the image file does not exist.
+     * @throws FileStorageException if an error occurs while reading the image file.
+     */
     @Override
     public byte[] getProductImageBytes(Long productId) {
         try {
@@ -472,6 +667,19 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /**
+     * Uploads image files for a specific product, stores them, and associates the stored image URLs
+     * with the product in the database. Invalid product IDs or empty image files will result in
+     * validation errors. The uploaded images' URLs are returned as a list.
+     *
+     * @param productId The ID of the product to which the images will be associated.
+     * @param imageFiles A list of {@link MultipartFile} objects representing the images
+     *                   to be uploaded.
+     * @return A list of URLs representing the stored images.
+     * @throws IOException If an input/output error occurs while processing the image files.
+     * @throws ValidationException If the product ID is invalid or the list of image files is empty.
+     * @throws DataAccessException If there is an error accessing the database during the process.
+     */
     @CacheEvict(value = {"product", "products", "productsByCategory"}, key = "#productId")
     @Transactional
     @Override
@@ -480,7 +688,7 @@ public class ProductServiceImpl implements IProductService {
             log.info("Uploading {} images for product ID: {}", imageFiles.size(), productId);
             validateProductId(productId);
 
-            if (imageFiles == null || imageFiles.isEmpty()) {
+            if (imageFiles.isEmpty()) {
                 throw exceptionFactory.validationError("images",
                         getLocalizedMessage("validation.product.images.required"));
             }
@@ -499,7 +707,7 @@ public class ProductServiceImpl implements IProductService {
             product.getGalleryImages().addAll(imageUrls);
             productRepository.save(product);
 
-            log.info("✅ {} images uploaded successfully for product ID: {}", imageUrls.size(), productId);
+            log.info("{} images uploaded successfully for product ID: {}", imageUrls.size(), productId);
             return imageUrls;
 
         } catch (ValidationException | IOException e) {
@@ -512,10 +720,18 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
-    // =====================================================
-    // ✅ GALERIE D'IMAGES
-    // =====================================================
-
+    // GALERIE D'IMAGES
+    /**
+     * Adds an image to the product's gallery by storing the image and associating it
+     * with the specified product.
+     *
+     * @param productId the ID of the product to which the image is to be added
+     * @param imageFile the image file to be added to the product's gallery
+     * @return the URL of the stored image
+     * @throws IOException if an error occurs while storing the image file
+     * @throws ValidationException if the provided product ID is invalid
+     * @throws DataAccessException if a database error occurs while saving the product
+     */
     @Override
     @CacheEvict(value = {"product", "products", "productsByCategory"}, key = "#productId")
     @Transactional
@@ -530,7 +746,7 @@ public class ProductServiceImpl implements IProductService {
             product.addGalleryImage(imageUrl);
             productRepository.save(product);
 
-            log.info("✅ Image added to gallery for product {}: {}", productId, imageUrl);
+            log.info("Image added to gallery for product {}: {}", productId, imageUrl);
             return imageUrl;
 
         } catch (ValidationException | IOException e) {
@@ -543,6 +759,12 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /**
+     * Removes an image from the product gallery for a specified product.
+     *
+     * @param productId the ID of the product from which the image is to be removed
+     * @param imageUrl the URL of the image to be removed from the product gallery
+     */
     @Override
     @CacheEvict(value = {"product", "products", "productsByCategory"}, key = "#productId")
     @Transactional
@@ -556,7 +778,7 @@ public class ProductServiceImpl implements IProductService {
             if (product.removeGalleryImage(imageUrl)) {
                 productRepository.save(product);
                 fileStorageService.deleteProductImage(imageUrl);
-                log.info("✅ Image removed from gallery for product {}: {}", productId, imageUrl);
+                log.info("Image removed from gallery for product {}: {}", productId, imageUrl);
             } else {
                 log.warn("Image not found in gallery for product {}: {}", productId, imageUrl);
             }
@@ -569,6 +791,16 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /**
+     * Reorders the gallery images of a given product based on the provided list of image URLs.
+     *
+     * @param productId The unique identifier of the product whose gallery images are to be reordered.
+     * @param imageUrlsInOrder The list of image URLs representing the new order of the gallery images.
+     *                          The list must contain all existing URLs in the product's gallery.
+     * @throws IllegalArgumentException If the provided productId is null or invalid.
+     * @throws ValidationException If the provided URLs do not match the current gallery images.
+     * @throws BusinessException If a database error occurs while saving the reordered gallery.
+     */
     @Override
     @CacheEvict(value = {"product", "products", "productsByCategory"}, key = "#productId")
     @Transactional
@@ -580,11 +812,11 @@ public class ProductServiceImpl implements IProductService {
             Product product = getProductEntityById(productId);
 
             if (product.getGalleryImages() != null &&
-                    product.getGalleryImages().containsAll(imageUrlsInOrder)) {
+                    new HashSet<>(product.getGalleryImages()).containsAll(imageUrlsInOrder)) {
 
                 product.setGalleryImages(new ArrayList<>(imageUrlsInOrder));
                 productRepository.save(product);
-                log.info("✅ Gallery reordered for product {}: {} images", productId, imageUrlsInOrder.size());
+                log.info("Gallery reordered for product {}: {} images", productId, imageUrlsInOrder.size());
             } else {
                 throw exceptionFactory.validationError("galleryImages",
                         "Les URLs fournies ne correspondent pas à la galerie actuelle");
@@ -598,15 +830,28 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
-    // =====================================================
-    // ✅ MÉTHODES PRIVÉES
-    // =====================================================
 
+    // MÉTHODES PRIVÉES
+
+    /**
+     * Retrieves a Product entity by its unique identifier.
+     *
+     * @param id the unique identifier of the Product to retrieve
+     * @return the Product entity corresponding to the given id
+     * @throws ResourceNotFoundException if no Product entity with the given id is found
+     */
     private Product getProductEntityById(Long id) {
         return productRepository.findById(id)
                 .orElseThrow(() -> exceptionFactory.resourceNotFound("Product", "id", id.toString()));
     }
 
+    /**
+     * Retrieves a Category entity based on the provided category ID.
+     *
+     * @param categoryId the ID of the category to be retrieved
+     * @return the Category entity corresponding to the given ID
+     * @throws ResourceNotFoundException if no category is found with the specified ID
+     */
     private Category getCategoryById(Long categoryId) {
         return categoryRepository.findById(categoryId)
                 .orElseThrow(() -> exceptionFactory.resourceNotFound(
@@ -614,7 +859,13 @@ public class ProductServiceImpl implements IProductService {
                 ));
     }
 
-
+    /**
+     * Validates that the product name provided in the productDto is unique.
+     * If the name is not unique and already exists in the repository, a business error is thrown.
+     *
+     * @param existingProduct the existing product being updated
+     * @param productDto      the product data transfer object containing the new product details
+     */
     private void validateProductNameUniqueness(Product existingProduct, ProductDto productDto) {
         if (!existingProduct.getName().equalsIgnoreCase(productDto.getName()) &&
                 productRepository.existsByNameIgnoreCase(productDto.getName())) {
@@ -624,6 +875,14 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /**
+     * Updates the category of an existing product based on the provided product DTO.
+     * If the category ID in the product DTO differs from the current category ID of
+     * the existing product, the category is updated.
+     *
+     * @param existingProduct the existing product whose category is to be updated
+     * @param productDto the data transfer object containing the updated category information
+     */
     private void updateProductCategory(Product existingProduct, ProductDto productDto) {
         if (productDto.getCategoryId() != null &&
                 !productDto.getCategoryId().equals(existingProduct.getCategory().getCategoryId())) {
@@ -636,6 +895,12 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /**
+     * Updates the fields of an existing product with the data from the provided product DTO.
+     *
+     * @param existingProduct the product entity to be updated
+     * @param productDto the product data transfer object containing updated field values
+     */
     private void updateProductFields(Product existingProduct, ProductDto productDto) {
         existingProduct.setName(productDto.getName());
         existingProduct.setDescription(productDto.getDescription());
@@ -647,16 +912,33 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /**
+     * Deletes the product image associated with the given product, if an image URL exists.
+     *
+     * @param product the product whose associated image is to be deleted
+     */
     private void deleteProductImage(Product product) {
         if (product.getImageUrl() != null) {
             fileStorageService.deleteProductImage(product.getImageUrl());
         }
     }
 
+    /**
+     * Extracts the file name from the given URL.
+     *
+     * @param imageUrl the URL of the image
+     * @return the extracted file name from the URL
+     */
     private String extractFileNameFromUrl(String imageUrl) {
         return imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
     }
 
+    /**
+     * Validates the provided product ID to ensure it is not null and is greater than 0.
+     *
+     * @param id the product ID to be validated
+     * @throws IllegalArgumentException if the product ID is null or less than or equal to 0
+     */
     private void validateProductId(Long id) {
         if (id == null || id <= 0) {
             throw exceptionFactory.validationError("productId",
@@ -664,6 +946,17 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /**
+     * Validates the given ProductDto object to ensure it meets the required criteria
+     * for product creation. Throws a validation error exception with appropriate
+     * messages if any of the validations fail.
+     *
+     * @param productDto The product data transfer object to be validated.
+     *                   Must not be null and must contain valid name, price, and
+     *                   category ID attributes. Additional constraints include
+     *                   length limits for name and description fields,
+     *                   and price must be greater than zero.
+     */
     private void validateProductForCreation(ProductDto productDto) {
         if (productDto == null) {
             throw exceptionFactory.validationError("productDto",
@@ -691,6 +984,13 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
+    /**
+     * Validates the provided product data for update operations.
+     *
+     * @param productDto the product data to be validated. It must not be null, and its productId must be specified.
+     *                   The method also performs creation validations on the product data.
+     * @throws ValidationException if productDto is null or its productId is missing.
+     */
     private void validateProductForUpdate(ProductDto productDto) {
         if (productDto == null) {
             throw exceptionFactory.validationError("productDto",
@@ -705,10 +1005,29 @@ public class ProductServiceImpl implements IProductService {
         validateProductForCreation(productDto);
     }
 
-    // =====================================================
-    // ✅MAPPER
-    // =====================================================
+    /**
+     * Builds a specification to filter inactive products.
+     * The specification checks whether the "isActive" property of a product is set to false,
+     * representing soft-deleted products.
+     *
+     * @return a {@link Specification} instance for filtering inactive products
+     */
+    private Specification<Product> buildInactiveProductsSpecification() {
+        return (root, query, cb) -> {
+            // isActive = false (produits soft deleted)
+            return cb.isFalse(root.get("isActive"));
+        };
+    }
 
+    // MAPPER
+
+    /**
+     * Creates a Product entity using the provided ProductDto and Category.
+     *
+     * @param productDto the data transfer object containing product details
+     * @param category the category to associate with the product
+     * @return a new Product entity populated with the specified details
+     */
     private Product createProductEntity(ProductDto productDto, Category category) {
         Product product = new Product();
         product.setName(productDto.getName());
@@ -720,6 +1039,12 @@ public class ProductServiceImpl implements IProductService {
         return product;
     }
 
+    /**
+     * Transforms a Product entity to its corresponding ProductDto representation.
+     *
+     * @param product the Product entity to be transformed
+     * @return the corresponding ProductDto containing the transformed data
+     */
     private ProductDto transformToDTO(Product product) {
         ProductDto productDto = new ProductDto();
         productDto.setProductId(product.getId());
@@ -742,6 +1067,16 @@ public class ProductServiceImpl implements IProductService {
         return productDto;
     }
 
+    /**
+     * Retrieves a localized message based on the provided message code and arguments.
+     * This method uses the current locale from the LocaleContextHolder to fetch
+     * the appropriate message from the message source.
+     *
+     * @param code the message code to look up, which acts as a key in the message source
+     * @param args the arguments to be used within the message, which can be placeholders
+     *             in the message string
+     * @return the localized message string for the given code and arguments
+     */
     private String getLocalizedMessage(String code, Object... args) {
         return messageSource.getMessage(code, args, LocaleContextHolder.getLocale());
     }
