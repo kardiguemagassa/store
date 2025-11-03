@@ -25,28 +25,24 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Filtre d'authentification JWT pour API REST stateless.
+ * JwtAuthenticationFilter is a custom implementation of OncePerRequestFilter responsible
+ * for validating JWT tokens and setting up the authenticated user's security context.
+ * It ensures that only authorized users can access protected resources, while ignoring
+ * specified public paths.
  *
- * RESPONSABILITÉS:
- * 1. Extraire le JWT du header Authorization
- * 2. Valider le token (signature, expiration, format)
- * 3. Charger les détails utilisateur depuis la base de données
- * 4. Créer et placer l'Authentication dans le SecurityContext
- * 5. Gérer les erreurs de manière appropriée
+ * This filter operates as follows:
+ * 1. Extracts the JWT from the Authorization header of incoming requests.
+ * 2. Validates the JWT's signature and expiration.
+ * 3. Loads user details from the UserDetailsService for the authenticated user.
+ * 4. Sets up the SecurityContext if the token and user details are valid.
  *
- * OPTIMISATIONS:
- * - shouldNotFilter() pour ignorer les chemins publics (perf++)
- * - AntPathMatcher pour wildcards (/api/v1/auth/**)
- * - Gestion granulaire des exceptions JWT
- * - Logging structuré pour monitoring
- *
- * ARCHITECTURE:
- * Ce filtre s'exécute AVANT BasicAuthenticationFilter dans la chaîne
- * Spring Security et une seule fois par requête (OncePerRequestFilter).
+ * Authentication errors such as token expiration, invalid format, or signature issues
+ * are logged and passed to the AuthenticationEntryPoint without explicitly throwing exceptions.
+ * Public paths are excluded from the JWT validation process to optimize the filter's performance.
  *
  * @author Kardigué
- * @version 3.0 - Production Ready
- * @since 2025-01-27
+ *  @version 3.0 - Production Ready
+ *  @since 2025-10-27
  */
 @Slf4j
 @Component
@@ -81,11 +77,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * gère les erreurs 401 de manière centralisée.
      */
     @Override
-    protected void doFilterInternal(
-            @NonNull HttpServletRequest request,
-            @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
-    ) throws ServletException, IOException {
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         final String requestPath = request.getRequestURI();
         final String jwt = extractJwtFromRequest(request);
@@ -98,25 +91,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
-            // ÉTAPE 1: Valider le JWT (signature + expiration)
+            // 1: Valider JWT (signature + expiration)
             if (!jwtUtil.validateJwtToken(jwt)) {
                 log.warn("Invalid JWT token for path: {}", requestPath);
                 filterChain.doFilter(request, response);
                 return;
             }
 
-            // ÉTAPE 2: Extraire le username (email)
+            // 2: Extraire le username (email)
             final String username = jwtUtil.getUsernameFromJwtToken(jwt);
 
-            // ÉTAPE 3: Vérifier si l'utilisateur n'est pas déjà authentifié
+            // 3: Vérifier si l'utilisateur n'est pas déjà authentifié
             // (Optimisation: éviter de recharger depuis la DB si déjà authentifié)
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                // ÉTAPE 4: Charger les détails complets depuis la DB
+                // 4: Charger les détails complets depuis la DB
                 // (roles, permissions, enabled status, etc.)
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                // ÉTAPE 5: Créer l'objet Authentication
+                // 5: Créer l'objet Authentication
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
@@ -124,12 +117,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 userDetails.getAuthorities()
                         );
 
-                // ÉTAPE 6: Ajouter les détails de la requête (IP, session, etc.)
-                authentication.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
+                // 6: Ajouter les détails de la requête (IP, session, etc.)
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                // ÉTAPE 7: Placer l'Authentication dans le SecurityContext
+                // 7: Placer l'Authentication dans le SecurityContext
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
                 log.debug("JWT authentication successful for user: {} on path: {}",
@@ -143,8 +134,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         } catch (SignatureException e) {
             // Signature invalide - Token potentiellement modifié
-            log.error("JWT signature validation failed for path: {} - Possible tampering attempt",
-                    requestPath);
+            log.error("JWT signature validation failed for path: {} - Possible tampering attempt", requestPath);
 
         } catch (MalformedJwtException e) {
             // Format JWT invalide
@@ -152,13 +142,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         } catch (UsernameNotFoundException e) {
             // User n'existe plus en DB (supprimé entre temps)
-            log.error("User not found for JWT token on path: {} - User may have been deleted",
-                    requestPath);
+            log.error("User not found for JWT token on path: {} - User may have been deleted", requestPath);
 
         } catch (Exception e) {
             // Erreur inattendue
-            log.error("Cannot set user authentication for path: {} - Error: {}",
-                    requestPath, e.getMessage(), e);
+            log.error("Cannot set user authentication for path: {} - Error: {}", requestPath, e.getMessage(), e);
         }
 
         // TOUJOURS continuer la chaîne de filtres
@@ -166,32 +154,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Détermine si le filtre doit être ignoré pour cette requête.
+     * Determines whether the given HTTP request should bypass filtering.
+     * This method checks if the request URI matches any predefined public paths
+     * and skips JWT validation if it matches.
      *
-     * OPTIMISATION CRITIQUE:
-     * Cette méthode est appelée AVANT doFilterInternal().
-     * Si elle retourne true, doFilterInternal() ne sera JAMAIS appelé.
-     *
-     * Cela évite de traiter inutilement les endpoints publics comme:
-     * - /api/v1/auth/login
-     * - /api/v1/auth/register
-     * - /api/v1/products/** (lecture publique)
-     * - /swagger-ui/**
-     *
-     * PERFORMANCE:
-     * Pour 1000 req/s sur /api/v1/auth/login, cette optimisation économise
-     * ~30ms de CPU par requête (pas de parsing JWT inutile).
-     *
-     * @param request Requête HTTP
-     * @return true si le filtre doit être ignoré (chemin public)
+     * @param request the HTTP request being processed
+     * @return true if the request should bypass filtering and not be processed further, false otherwise
      */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         final String path = request.getRequestURI();
 
         // Vérifier si le chemin correspond à un pattern public
-        boolean isPublicPath = publicPaths.stream()
-                .anyMatch(publicPath -> pathMatcher.match(publicPath, path));
+        boolean isPublicPath = publicPaths.stream().anyMatch(publicPath -> pathMatcher.match(publicPath, path));
 
         if (isPublicPath) {
             log.trace("Public path detected, skipping JWT validation: {}", path);
@@ -201,17 +176,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Extrait le JWT du header Authorization.
+     * Extracts the JWT token from the provided HTTP request.
+     * The method checks the value of the "Authorization" header in the request, verifies that it starts
+     * with the expected bearer token prefix, and extracts the token from the header if valid.
      *
-     * FORMAT ATTENDU: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-     *
-     * VALIDATION:
-     * - Header présent
-     * - Commence par "Bearer "
-     * - Longueur suffisante après "Bearer "
-     *
-     * @param request Requête HTTP
-     * @return JWT ou null si absent/invalide
+     * @param request the {@code HttpServletRequest} from which the JWT token is to be extracted.
+     *                It must contain an "Authorization" header with a valid bearer token to succeed.
+     * @return the extracted JWT token as a {@code String}, or {@code null} if the header is missing,
+     *         does not start with the expected prefix, or is otherwise invalid.
      */
     private String extractJwtFromRequest(HttpServletRequest request) {
         final String bearerToken = request.getHeader(AUTHORIZATION_HEADER);

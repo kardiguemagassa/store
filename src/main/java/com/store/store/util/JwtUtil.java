@@ -1,5 +1,3 @@
-// src/main/java/com/store/store/util/JwtUtil.java
-
 package com.store.store.util;
 
 import com.store.store.entity.Customer;
@@ -22,28 +20,28 @@ import java.util.Date;
 import java.util.stream.Collectors;
 
 /**
- * Utilitaire centralisé pour la génération et validation des tokens JWT.
- *
- * RESPONSABILITÉS:
- * - Génération de JWT depuis Authentication (login)
- * - Génération de JWT depuis Customer (refresh token)
- * - Validation de JWT (signature + expiration)
- * - Extraction des claims (username/email, roles)
- *
- * SÉCURITÉ:
- * - Secret key depuis application.yml (JAMAIS hardcodé)
- * - Signature HMAC-SHA512
- * - Expiration configurable (défaut: 15 minutes)
- * - Issuer configurable pour multi-tenancy
- *
+ * Centralized utility for generating and validating JWT tokens.
+
+ * RESPONSIBILITIES:
+ * - JWT generation from Authentication (login)
+ * - JWT generation from Customer (refresh token)
+ * - JWT validation (signature + expiration)
+ * - Claim extraction (username/email, roles)
+
+ * SECURITY:
+ * - Secret key from application.yml (NEVER hardcoded)
+ * - HMAC-SHA512 signature
+ * - Configurable expiration (default: 15 minutes)
+ * - Configurable issuer for multi-tenancy
+
  * ARCHITECTURE:
- * - Centralisé: une seule source de vérité pour JWT
- * - Réutilisable: login, refresh, filter
- * - Testable: toutes les méthodes sont stateless
- *
+ * - Centralized: a single source of truth for JWT
+ * - Reusable: login, refresh, filter
+ * - Testable: all methods are stateless
+
  * @author Kardigué
  * @version 3.0 - Production Ready
- * @since 2025-01-27
+ * @since 2025-10-27
  */
 @Slf4j
 @Component
@@ -59,23 +57,15 @@ public class JwtUtil {
     private String jwtIssuer;
 
     /**
-     * ✅ Génère un JWT depuis un objet Authentication (utilisé au LOGIN).
+     * Generates a signed JWT (JSON Web Token) for the authenticated user.
+     * This token includes user details like email, name, mobile number,
+     * and roles, and is used for ensuring secure communication and
+     * authorization.
      *
-     * STRUCTURE DU JWT:
-     * {
-     *   "iss": "store-api",
-     *   "sub": "user@example.com",
-     *   "email": "user@example.com",
-     *   "name": "John Doe",
-     *   "mobile": "+33612345678",
-     *   "roles": "ROLE_USER,ROLE_ADMIN",
-     *   "iat": 1706371200,
-     *   "exp": 1706372100
-     * }
-     *
-     * @param authentication Objet Authentication de Spring Security
-     * @return JWT signé
-     * @throws IllegalArgumentException Si authentication est null
+     * @param authentication The authentication object containing user credentials
+     *                        and authorities. Must not be null.
+     * @return A signed JWT as a String.
+     * @throws IllegalArgumentException If the authentication object is null.
      */
     public String generateJwtToken(Authentication authentication) {
         if (authentication == null) {
@@ -96,21 +86,20 @@ public class JwtUtil {
                         .collect(Collectors.joining(","))  // roles (comma-separated)
         );
 
-        log.info("JWT generated for user: {} (expires in {}ms)",
-                customer.getEmail(), jwtExpirationMs);
+        log.info("JWT generated for user: {} (expires in {}ms)", customer.getEmail(), jwtExpirationMs);
 
         return jwt;
     }
 
     /**
-     * ✅ Génère un JWT depuis un Customer (utilisé au REFRESH TOKEN).
+     * Generates a signed JWT (JSON Web Token) for the provided customer.
+     * The token includes customer details such as email, name, mobile number,
+     * and roles, which are essential for secure communication and authorization.
      *
-     * Cette méthode est appelée par RefreshTokenController quand
-     * l'utilisateur utilise son refresh token pour obtenir un nouveau JWT.
-     *
-     * @param customer Customer entity
-     * @return JWT signé
-     * @throws IllegalArgumentException Si customer est null
+     * @param customer The customer object containing user details and roles.
+     *                 Must not be null.
+     * @return A signed JWT as a string.
+     * @throws IllegalArgumentException If the customer object is null.
      */
     public String generateJwtTokenFromCustomer(Customer customer) {
         if (customer == null) {
@@ -123,12 +112,7 @@ public class JwtUtil {
                 .collect(Collectors.joining(","));
 
         // Générer le token
-        String jwt = buildJwtToken(
-                customer.getEmail(),
-                customer.getName(),
-                customer.getMobileNumber(),
-                roles
-        );
+        String jwt = buildJwtToken(customer.getEmail(), customer.getName(), customer.getMobileNumber(), roles);
 
         log.info("JWT generated from customer: {} (expires in {}ms)",
                 customer.getEmail(), jwtExpirationMs);
@@ -137,17 +121,15 @@ public class JwtUtil {
     }
 
     /**
-     * ✅ Construction interne du JWT (DRY - Don't Repeat Yourself).
+     * Builds a signed JWT (JSON Web Token) with provided user details and roles.
+     * The token is signed using HMAC-SHA512 and includes standard claims as well
+     * as additional custom claims (email, name, mobile, roles).
      *
-     * Cette méthode privée factorise la logique de construction
-     * pour éviter la duplication entre generateJwtToken() et
-     * generateJwtTokenFromCustomer().
-     *
-     * @param email Email de l'utilisateur (utilisé comme subject)
-     * @param name Nom complet
-     * @param mobile Numéro de téléphone
-     * @param roles Rôles séparés par virgule (ex: "ROLE_USER,ROLE_ADMIN")
-     * @return JWT signé
+     * @param email The email of the user to be included in the token. This will also serve as the subject.
+     * @param name The full name of the user to be included as a custom claim.
+     * @param mobile The mobile number of the user to be included as a custom claim.
+     * @param roles The roles assigned to the user, provided as a comma-separated string, to be included as a custom claim.
+     * @return A signed JWT as a String.
      */
     private String buildJwtToken(String email, String name, String mobile, String roles) {
         Date now = new Date();
@@ -156,46 +138,33 @@ public class JwtUtil {
         SecretKey secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
 
         return Jwts.builder()
-                // ═══════════════════════════════════════════════════════
+
                 // CLAIMS STANDARDS (Registered Claims - RFC 7519)
-                // ═══════════════════════════════════════════════════════
                 .issuer(jwtIssuer)              // iss: Émetteur du token
                 .subject(email)                 // sub: Identifiant unique (email)
                 .issuedAt(now)                  // iat: Date de création
                 .expiration(expirationDate)     // exp: Date d'expiration
 
-                // ═══════════════════════════════════════════════════════
                 // CLAIMS CUSTOM (Private Claims)
-                // ═══════════════════════════════════════════════════════
                 .claim("email", email)          // Email (pour compatibilité)
                 .claim("name", name)            // Nom complet
                 .claim("mobile", mobile)        // Numéro de téléphone
                 .claim("roles", roles)          // Rôles (comma-separated)
 
-                // ═══════════════════════════════════════════════════════
-                // SIGNATURE (HMAC-SHA512)
-                // ═══════════════════════════════════════════════════════
-                .signWith(secretKey)
 
+                // SIGNATURE (HMAC-SHA512)
+                .signWith(secretKey)
                 .compact();
     }
 
     /**
-     * ✅ Valide l'authenticité et l'expiration d'un token JWT.
+     * Validates a given JSON Web Token (JWT) to ensure it is well-formed, unexpired,
+     * correctly signed, and meets expected standards.
      *
-     * VÉRIFICATIONS:
-     * 1. Signature valide (HMAC-SHA512)
-     * 2. Token non expiré
-     * 3. Format correct
-     *
-     * EXCEPTIONS GÉRÉES:
-     * - ExpiredJwtException: Token expiré
-     * - SignatureException: Signature invalide (token modifié)
-     * - MalformedJwtException: Format JWT invalide
-     *
-     * @param token Token JWT à valider
-     * @return true si valide, false sinon
-     * @throws IllegalArgumentException Si token est null ou vide
+     * @param token The JWT string to validate. It must not be null or blank.
+     * @return true if the token is valid; false if the token is expired, malformed,
+     *         or fails signature validation.
+     * @throws IllegalArgumentException if the provided token is null or blank.
      */
     public boolean validateJwtToken(String token) {
         if (token == null || token.isBlank()) {
@@ -206,10 +175,7 @@ public class JwtUtil {
             SecretKey secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
 
             // Parser et valider le token (lance une exception si invalide)
-            Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token);
+            Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token);
 
             log.debug("JWT token validated successfully");
             return true;
@@ -233,16 +199,16 @@ public class JwtUtil {
     }
 
     /**
-     * ✅ Extrait le username (email) depuis un token JWT.
+     * Extracts the username (email) from a given JWT (JSON Web Token).
+     * The method parses the JWT, verifies its validity using the configured
+     * secret key, and retrieves the email embedded as the subject in the token's claims.
      *
-     * Cette méthode est utilisée par JwtAuthenticationFilter pour
-     * récupérer l'email de l'utilisateur et charger ses détails depuis la DB.
-     *
-     * CLAIM UTILISÉ: "sub" (subject) qui contient l'email
-     *
-     * @param token Token JWT valide
-     * @return Email de l'utilisateur
-     * @throws IllegalArgumentException Si token invalide ou email absent
+     * @param token The JWT string to be parsed. It must not be null or blank.
+     *              If the token is invalid or does not contain a subject, an
+     *              IllegalArgumentException will be thrown.
+     * @return The extracted username (email) as a string.
+     * @throws IllegalArgumentException If the token is null, blank, invalid,
+     *                                  or does not contain a subject.
      */
     public String getUsernameFromJwtToken(String token) {
         if (token == null || token.isBlank()) {
@@ -252,11 +218,7 @@ public class JwtUtil {
         try {
             SecretKey secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
 
-            Claims claims = Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
+            Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
 
             // Extraire le subject (qui contient l'email)
             String email = claims.getSubject();
@@ -276,27 +238,32 @@ public class JwtUtil {
     }
 
     /**
-     * ✅ Extrait l'email depuis un token JWT.
+     * Extracts the email address from the given JWT (JSON Web Token).
+     * This method internally delegates the operation to `getUsernameFromJwtToken`,
+     * as the email is expected to be stored as the username (subject) in the token's claims.
      *
-     * NOTE: Cette méthode est un alias de getUsernameFromJwtToken()
-     * pour la rétrocompatibilité.
-     *
-     * @param token Token JWT valide
-     * @return Email de l'utilisateur
+     * @param token The JWT string to be parsed. It must not be null or blank.
+     *              If the token is invalid or does not contain a subject, an
+     *              IllegalArgumentException will be thrown.
+     * @return The extracted email address as a string.
+     * @throws IllegalArgumentException If the token is null, blank, invalid,
+     *                                  or does not contain a subject.
      */
     public String getEmailFromJwtToken(String token) {
         return getUsernameFromJwtToken(token);
     }
 
     /**
-     * ✅ Extrait les rôles depuis un token JWT.
+     * Extracts the roles information from a given JWT (JSON Web Token).
+     * This method parses the JWT, verifies its validity using the configured secret key,
+     * and retrieves the roles embedded as a claim in the token.
      *
-     * UTILISATION:
-     * Peut être utilisé pour afficher les rôles dans les logs
-     * ou pour des vérifications additionnelles.
-     *
-     * @param token Token JWT valide
-     * @return Rôles séparés par virgule (ex: "ROLE_USER,ROLE_ADMIN")
+     * @param token The JWT string to be parsed. It must not be null or blank.
+     *              If the token is invalid, missing roles, or fails parsing,
+     *              an empty string is returned.
+     * @return The extracted roles as a comma-separated string.
+     *         Returns an empty string if roles are missing or if any error occurs during parsing.
+     * @throws IllegalArgumentException If the provided token is null or blank.
      */
     public String getRolesFromJwtToken(String token) {
         if (token == null || token.isBlank()) {
@@ -306,11 +273,7 @@ public class JwtUtil {
         try {
             SecretKey secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
 
-            Claims claims = Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
+            Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
 
             String roles = claims.get("roles", String.class);
 
@@ -328,13 +291,14 @@ public class JwtUtil {
     }
 
     /**
-     * ✅ Extrait tous les claims depuis un token JWT.
+     * Retrieves all claims from the provided JSON Web Token (JWT).
+     * This method parses the JWT, validates its signature using
+     * the configured secret key, and returns the claims contained within the token.
      *
-     * UTILISATION:
-     * Pour debugging ou logging avancé.
-     *
-     * @param token Token JWT valide
-     * @return Claims du JWT
+     * @param token The JWT string to be parsed. It must not be null or blank.
+     *              If the token is null, blank, or invalid, an IllegalArgumentException
+     *              will be thrown.
+     * @return The claims extracted from the token as a Claims object.
      */
     public Claims getAllClaimsFromJwtToken(String token) {
         if (token == null || token.isBlank()) {

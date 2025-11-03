@@ -1,5 +1,3 @@
-// src/main/java/com/store/store/security/CustomerUserDetailsService.java
-
 package com.store.store.security;
 
 import com.store.store.entity.Customer;
@@ -13,20 +11,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service de chargement des détails utilisateur pour Spring Security.
+ * Service for loading {@link UserDetails} based on a user's email.
+ * This class implements {@link UserDetailsService} to provide
+ * a bridge for integrating custom user details into Spring Security.
  *
- * RESPONSABILITÉ:
- * Charger un Customer depuis la base de données et le convertir en UserDetails
- * pour que Spring Security puisse l'utiliser dans le processus d'authentification.
+ * This implementation specifically handles loading {@code Customer} entities, along with their associated roles,
+ * to create a {@code UserDetails} object that integrates with the authentication system.
  *
- * UTILISÉ PAR:
- * - JwtAuthenticationFilter (pour valider le JWT et charger les détails user)
- * - DaoAuthenticationProvider (lors du login)
- * - SecurityConfig (injection dans authenticationProvider)
+ * Characteristics:
+ * - Uses {@link Transactional} to manage lazy-loaded
+ *   relations and ensure proper initialization of associated roles.
+ * - Loads roles eagerly to avoid {@link org.hibernate.LazyInitializationException}.
+ * - Handles user lookup by their email address (username).
  *
  * @author Kardigué
  * @version 3.0 - Production Ready
- * @since 2025-01-27
+ * @since 2025-10-27
  */
 @Slf4j
 @Service
@@ -36,18 +36,17 @@ public class CustomerUserDetailsService implements UserDetailsService {
     private final CustomerRepository customerRepository;
 
     /**
-     * ✅ Charge les détails d'un utilisateur par son email (username).
+     * Loads user details based on the provided username, which represents the user's email.
+     * This method retrieves a {@code Customer} entity from the database along with all associated roles.
+     * The method converts the {@code Customer} entity to a {@code UserDetails} object for integration with
+     * the Spring Security framework.
      *
-     * IMPORTANT:
-     * - Charge les rôles en EAGER pour éviter LazyInitializationException
-     * - Le contexte @Transactional est nécessaire pour charger les relations
-     *
-     * @param username Email de l'utilisateur
-     * @return UserDetails contenant Customer et ses rôles
-     * @throws UsernameNotFoundException Si l'utilisateur n'existe pas
+     * @param username the email address of the user to be loaded.
+     * @return a {@code UserDetails} object containing the user's information and roles.
+     * @throws UsernameNotFoundException if no user is found with the specified email address.
      */
     @Override
-    @Transactional(readOnly = true)  // ✅ IMPORTANT pour charger les rôles
+    @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         log.debug("Loading user details for username: {}", username);
 
