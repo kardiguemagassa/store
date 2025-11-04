@@ -34,6 +34,15 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * A REST controller for managing products within the application. Includes endpoints
+ * for searching, retrieving active and inactive products, and providing support for
+ * pagination, filtering, and sorting capabilities.
+ *
+ * @author Kardigué
+ * @version 3.0
+ * @since 2025-11-01
+ */
 @Tag(name = "Products", description = "API de gestion des produits")
 @RestController
 @RequestMapping("/api/v1/products")
@@ -239,7 +248,8 @@ public class ProductController {
      */
     @Operation(
             summary = "Obtenir les produits inactifs avec pagination",
-            description = "Retourne la liste paginée des produits inactifs (soft deleted) avec options de tri personnalisées. Accessible uniquement aux administrateurs.",
+            description = "Retourne la liste paginée des produits inactifs (soft deleted) " +
+                    "avec options de tri personnalisées. Accessible uniquement aux administrateurs.",
             tags = {"Products - Admin"}
     )
     @ApiResponses(value = {
@@ -275,7 +285,7 @@ public class ProductController {
             @Parameter(description = "Direction du tri")
             @RequestParam(defaultValue = "DESC") ProductSearchCriteria.SortDirection sortDirection) {
 
-        log.info("📥 GET /api/v1/products/inactive/paginated - page: {}, size: {}, sortBy: {}, sortDirection: {}",
+        log.info("ET /api/v1/products/inactive/paginated - page: {}, size: {}, sortBy: {}, sortDirection: {}",
                 page, size, sortBy, sortDirection);
 
         // Critères de recherche pour produits INACTIFS

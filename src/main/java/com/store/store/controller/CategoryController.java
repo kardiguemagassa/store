@@ -32,10 +32,14 @@ public class CategoryController {
 
     private final ICategoryService categoryService;
 
-    // =====================================================
     // LECTURE (READ) - PUBLIC
-    // =====================================================
 
+    /**
+     * Fetches all active categories, sorted by their display order.
+     *
+     * @return a ResponseEntity containing a list of {@code CategoryDto} objects representing
+     *         all active categories.
+     */
     @Operation(summary = "Obtenir toutes les catégories actives",
             description = "Retourne uniquement les catégories actives, triées par ordre d'affichage")
     @GetMapping
@@ -45,6 +49,12 @@ public class CategoryController {
         return ResponseEntity.ok(categories);
     }
 
+    /**
+     * Retrieves a category based on its unique code.
+     *
+     * @param code the unique code of the category (e.g., SPORTS, ANIME). Must be a non-blank string in uppercase.
+     * @return a ResponseEntity containing the {@code CategoryDto} that matches the given code.
+     */
     @Operation(summary = "Obtenir une catégorie par son code",
             description = "Recherche une catégorie par son code unique (ex: SPORTS, ANIME)")
     @GetMapping("/{code}")
@@ -57,6 +67,12 @@ public class CategoryController {
         return ResponseEntity.ok(category);
     }
 
+    /**
+     * Fetches categories that contain at least one product.
+     *
+     * @return a ResponseEntity containing a list of {@code CategoryDto} objects representing
+     *         categories with associated products.
+     */
     @Operation(summary = "Obtenir les catégories avec des produits",
             description = "Retourne uniquement les catégories qui contiennent au moins un produit")
     @GetMapping("/with-products")
@@ -66,10 +82,14 @@ public class CategoryController {
         return ResponseEntity.ok(categories);
     }
 
-    // =====================================================
     // ADMIN - LECTURE
-    // =====================================================
 
+    /**
+     * Retrieves all categories, both active and inactive, available in the system.
+     * This operation is restricted to users with ADMIN privileges.
+     *
+     * @return a ResponseEntity containing a list of {@code CategoryDto} objects that represent all categories.
+     */
     @Operation(summary = "[ADMIN] Obtenir toutes les catégories",
             description = "Retourne toutes les catégories (actives et inactives)")
     @PreAuthorize("hasRole('ADMIN')")
@@ -80,6 +100,12 @@ public class CategoryController {
         return ResponseEntity.ok(categories);
     }
 
+    /**
+     * Retrieves a category by its unique identifier.
+     *
+     * @param id the unique identifier of the category. Must be greater than or equal to 1.
+     * @return a ResponseEntity containing the {@code CategoryDto} that corresponds to the given ID.
+     */
     @Operation(summary = "[ADMIN] Obtenir une catégorie par ID")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin/{id}")
@@ -92,10 +118,18 @@ public class CategoryController {
         return ResponseEntity.ok(category);
     }
 
-    // =====================================================
     // ADMIN - CRÉATION (CREATE)
-    // =====================================================
 
+    /**
+     * Creates a new category with a unique code, name, description, and icon.
+     * This operation is restricted to users with ADMIN privileges.
+     *
+     * @param dto the {@code CategoryDto} object containing the details of the category
+     *            to be created. Fields such as code, name, description, and icon should
+     *            be provided and validated.
+     * @return a {@code ResponseEntity} containing the created {@code CategoryDto} object
+     *         with its generated ID and additional details.
+     */
     @Operation(summary = "[ADMIN] Créer une nouvelle catégorie",
             description = "Crée une catégorie avec code unique, nom, description et icône")
     @PreAuthorize("hasRole('ADMIN')")
@@ -111,10 +145,17 @@ public class CategoryController {
                 .body(created);
     }
 
-    // =====================================================
-    // ADMIN - MISE À JOUR (UPDATE)
-    // =====================================================
 
+    // ADMIN - MISE À JOUR (UPDATE)
+
+    /**
+     * Updates the details of an existing category.
+     *
+     * @param id the unique identifier of the category to update. Must be greater than or equal to 1.
+     * @param dto the {@code CategoryDto} object containing the updated details of the category.
+     *            Fields such as code, name, description, icon, and others should be provided and validated.
+     * @return a {@code ResponseEntity} containing the updated {@code CategoryDto} object.
+     */
     @Operation(summary = "[ADMIN] Mettre à jour une catégorie",
             description = "Modifie tous les champs d'une catégorie existante")
     @PreAuthorize("hasRole('ADMIN')")
@@ -131,6 +172,13 @@ public class CategoryController {
         return ResponseEntity.ok(updated);
     }
 
+    /**
+     * Toggles the active/inactive status of a category based on its unique identifier.
+     * This operation is restricted to users with ADMIN privileges.
+     *
+     * @param id the unique identifier of the category to toggle the status. Must be greater than or equal to 1.
+     * @return a {@code ResponseEntity} containing the updated {@code CategoryDto} object with the new status.
+     */
     @Operation(summary = "[ADMIN] Activer/Désactiver une catégorie",
             description = "Bascule le statut actif/inactif d'une catégorie")
     @PreAuthorize("hasRole('ADMIN')")
@@ -145,10 +193,15 @@ public class CategoryController {
         return ResponseEntity.ok(updated);
     }
 
-    // =====================================================
     // ADMIN - SUPPRESSION (DELETE)
-    // =====================================================
 
+    /**
+     * Deletes a category based on its unique identifier. Only categories that do not
+     * contain any associated products can be deleted. This operation is restricted
+     * to users with ADMIN privileges.
+     *
+     * @param id the unique identifier of the category to delete. Must be greater than or equal to 1.
+     * @return a {@code ResponseEntity} containing a {@code ResponseDto} object*/
     @Operation(summary = "[ADMIN] Supprimer une catégorie",
             description = "Supprime une catégorie si elle ne contient pas de produits")
     @PreAuthorize("hasRole('ADMIN')")
@@ -165,10 +218,17 @@ public class CategoryController {
         );
     }
 
-    // =====================================================
-    // ADMIN - UPLOAD D'ICÔNE
-    // =====================================================
 
+    // ADMIN - UPLOAD D'ICÔNE
+
+    /**
+     * Uploads a custom icon for a category. Supported file formats are PNG, SVG, JPEG, and WebP.
+     * Maximum file size allowed is 2 MB. Only accessible to users with the 'ADMIN' role.
+     *
+     * @param id The unique identifier of the category. Must be a positive number.
+     * @param iconFile The icon file to upload. Accepted formats: PNG, SVG, JPEG, WebP.
+     * @return A ResponseEntity containing a success response DTO with a message and HTTP status.
+     */
     @Operation(summary = "[ADMIN] Uploader une icône pour une catégorie",
             description = "Upload d'une icône personnalisée (PNG, SVG, JPEG, WebP). Taille max: 2 MB")
     @PreAuthorize("hasRole('ADMIN')")
@@ -193,6 +253,14 @@ public class CategoryController {
         );
     }
 
+    /**
+     * Updates the icon of a category by setting it to the specified emoji.
+     * This operation can only be performed by administrators.
+     *
+     * @param id    the unique identifier of the category to update (must be greater than or equal to 1)
+     * @param emoji the emoji to be set as the category's icon (must not be blank)
+     * @return a {@link ResponseEntity} containing the updated {@link CategoryDto} object after the emoji is set
+     */
     @Operation(summary = "[ADMIN] Définir une icône emoji",
             description = "Définit un emoji comme icône de catégorie")
     @PreAuthorize("hasRole('ADMIN')")

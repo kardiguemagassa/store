@@ -21,14 +21,18 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * Contrôleur REST pour la gestion des commandes
+ * Controller providing endpoints for managing customer orders.
  *
- * Endpoints :
- * - POST /orders/validate : Valide une commande avant création
- * - POST /orders : Crée une nouvelle commande
- * - GET /orders/customer : Liste des commandes du client
- * - GET /orders/pending : Liste des commandes en attente (ADMIN)
- * - PATCH /orders/{id}/status : Met à jour le statut (ADMIN)
+ * This class defines endpoints to validate, create, retrieve, and update orders.
+ * It includes mechanisms for both user and admin-specific functionalities, including order
+ * validation, listing customer orders, creating an order after payment confirmation, listing all
+ * pending orders for admins, and updating order statuses.
+ *
+ * Role-based access control is implemented using annotations to ensure appropriate access to sensitive operations.
+ *
+ * @author Kardigué
+ *  * @version 3.0
+ *  * @since 2025-11-01
  */
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -41,30 +45,16 @@ public class OrderController {
     private final IOrderService orderService;
     private final OrderValidationServiceImpl validationService;
 
-    // =====================================================
+
     // VALIDATION PRE-CREATION
-    // =====================================================
-
-     /*
-    Seulement ces 2 methods avant
-
-    @PostMapping
-    public ResponseEntity<String> createOrder(@RequestBody  OrderRequestDto requestDto) {
-        iOrderService.createOrder(requestDto);
-        return ResponseEntity.ok("Order created successfully!");
-    }
-
-
-
-    @GetMapping
-    public ResponseEntity<List<OrderResponseDto>> loadCustomerOrders() {
-        return ResponseEntity.ok(orderService.getCustomerOrders());
-    }*/
-
 
     /**
-     * ✅ Valide une commande avant création
-     * Permet au frontend de vérifier la validité avant soumission
+     * Validates an order to ensure it is ready for creation. The validation process checks
+     * stock availability, price consistency, and payment details.
+     *
+     * @param request the order request object containing details of the order to be validated
+     * @return a {@code ResponseEntity} containing the validation results, including whether the
+     *         order is valid and any associated errors or warnings
      */
     @PostMapping("/validate")
     @PreAuthorize("hasRole('USER')")
@@ -109,7 +99,15 @@ public class OrderController {
     // =====================================================
 
     /**
-     * Crée une nouvelle commande après paiement réussi
+     * Creates a new order after validating the request and confirming payment.
+     * This method validates the order information, ensures compliance with
+     * business rules, and upon successful validation, creates the order.
+     *
+     * @param request the order details provided by the user, encapsulated in
+     *                an {@code OrderRequestDto} object
+     * @return a {@code ResponseEntity} containing a {@code SuccessResponseDto}.
+     *         The response includes the status of the creation process, either
+     *         success or failure with an appropriate message.
      */
     @PostMapping
     @PreAuthorize("hasRole('USER')")
@@ -168,12 +166,13 @@ public class OrderController {
                         .build());
     }
 
-    // =====================================================
     // CONSULTATION DES COMMANDES
-    // =====================================================
 
     /**
-     * Récupère les commandes du client connecté
+     * Retrieves all orders associated with the authenticated customer.
+     *
+     * @return a {@code ResponseEntity} containing a list of {@code OrderResponseDto} objects
+     *         representing the customer's orders.
      */
     @GetMapping("/customer")
     @PreAuthorize("hasRole('USER')")
@@ -203,7 +202,13 @@ public class OrderController {
     }
 
     /**
-     * Récupère toutes les commandes en attente (ADMIN uniquement)
+     * Retrieves all pending orders for administration purposes.
+     * This method is intended for use by users with the ADMIN role to view
+     * all orders that are awaiting processing.
+     *
+     * @return a {@code ResponseEntity} containing a list of {@code OrderResponseDto} objects
+     *         representing pending orders. The response will include an HTTP 200 status code
+     *         on success or appropriate error codes otherwise.
      */
     @GetMapping
     //@PreAuthorize("hasRole('ADMIN')")
@@ -236,12 +241,17 @@ public class OrderController {
         return ResponseEntity.ok(orders);
     }
 
-    // =====================================================
     // MISE À JOUR DE COMMANDE
-    // =====================================================
 
     /**
-     * Met à jour le statut d'une commande (ADMIN uniquement)
+     * Updates the status of the specified order. The status of the order can be
+     * changed to one of the following: CREATED, CONFIRMED, CANCELLED, or DELIVERED.
+     * Requires ADMIN role for access.
+     *
+     * @param orderId the unique identifier of the order
+     * @param status the new status to be applied to the order
+     * @return a ResponseEntity containing a SuccessResponseDto which indicates
+     *         whether the status update was successful
      */
     @PatchMapping("/{orderId}/status")
     @PreAuthorize("hasRole('ADMIN')")
