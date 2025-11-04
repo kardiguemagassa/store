@@ -4,6 +4,7 @@ import com.store.store.constants.ApplicationConstants;
 import com.store.store.dto.*;
 import com.store.store.entity.Customer;
 import com.store.store.enums.RoleType;
+
 import com.store.store.exception.BusinessException;
 import com.store.store.exception.ExceptionFactory;
 import com.store.store.repository.CustomerRepository;
@@ -27,8 +28,41 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
+
+/**
+ * Controller providing administrative API operations, accessible only to users
+ * with the ADMIN role. Handles user management, order processing, and contact
+ * message management.
+ *
+ * The controller enforces security restrictions ensuring only authorized
+ * administrators can access the endpoints.
+ *
+ * Available Features:
+ *
+ * 1. User Management:
+ *    - Assign roles to users.
+ *    - Promote users to higher roles.
+ *    - Demote ADMIN users to lower roles.
+ *    - Remove roles from users.
+ *    - Retrieve all users with their roles.
+ *
+ * 2. Order Management:
+ *    - Retrieve all pending orders.
+ *    - Confirm specific orders.
+ *    - Cancel specific orders.
+ *
+ * 3. Contact Message Management:
+ *    - Retrieve all open contact messages.
+ *    - Close specific contact messages.
+ *
+ * The controller leverages services to handle core logic, ensure data integrity,
+ * and manage the business rules related to administrative functionalities.
+ *
+ * @author Kardigué
+ * @version 3.0
+ * @since 2025-11-01
+ */
 @Tag(name = "Admin", description = "API d'administration")
 @PreAuthorize("hasRole('ADMIN')")
 @RestController
@@ -44,11 +78,17 @@ public class AdminController {
     private final CustomerRepository customerRepository;
     private final IRoleAssignmentService roleAssignmentService;
 
-    // =====================================================
-    // GESTION DES UTILISATEURS
-    // =====================================================
 
-    // ✅ EXISTANT : Assigner n'importe quel rôle
+    // GESTION DES UTILISATEURS
+
+    /**
+     * Assigns a specific role to a user identified by their customer ID.
+     *
+     * @param customerId the ID of the customer to whom the role will be assigned
+     * @param roleType the type of role to be assigned to the customer
+     * @param admin the authenticated admin performing the operation
+     * @return a ResponseEntity containing a SuccessResponseDto indicating the success of the role assignment
+     */
     @PostMapping("/users/{customerId}/roles/{roleType}")
     @Operation(summary = "Assigner un rôle à un utilisateur")
     public ResponseEntity<SuccessResponseDto> assignRole(
@@ -66,6 +106,13 @@ public class AdminController {
         ));
     }
 
+    /**
+     * Promotes a user to the next role level in the hierarchy.
+     *
+     * @param customerId the ID of the customer to be promoted
+     * @param admin the authenticated admin user performing the promotion
+     * @return a ResponseEntity containing a PromotionResponseDto with details of the promotion
+     */
     @PostMapping("/users/{customerId}/promote")
     @Operation(summary = "Promouvoir un utilisateur au niveau supérieur")
     public ResponseEntity<PromotionResponseDto> promoteUser(
@@ -90,6 +137,20 @@ public class AdminController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Promotes a user to the admin role.
+     *
+     * This method allows an authenticated admin user to promote another user
+     * to the administrator role. It verifies the user's existence, updates their
+     * role, and returns a response with the promotion details.
+     *
+     * @param userId the ID of the user to be promoted. Must be a positive integer.
+     * @param adminUser the authenticated admin user performing the promotion.
+     *
+     * @return a ResponseEntity containing a {@link PromotionResponseDto} with
+     *         the details of the promotion, including the promoted user's email,
+     *         their new role, the admin who performed the promotion, and the timestamp.
+     */
     @PostMapping("/users/{userId}/promote-to-admin")
     public ResponseEntity<PromotionResponseDto> promoteToAdmin(
             @PathVariable @Min(1) Long userId,
@@ -113,6 +174,19 @@ public class AdminController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Demotes an admin user to a regular user role.
+     *
+     * This method allows an authenticated admin to revoke the administrative privileges
+     * of another user, identified by their user ID. It adjusts the user's roles accordingly
+     * and returns a response containing the details of the demotion.
+     *
+     * @param userId the ID of the user to be demoted. Must be a positive integer.
+     * @param adminUser the authenticated admin user performing the demotion.
+     * @return a ResponseEntity containing a {@link PromotionResponseDto} with details
+     *         of the demotion, including the user's email, the removed role, the admin
+     *         who performed the action, and the timestamp.
+     */
     @Operation(summary = "Rétrograder un ADMIN en utilisateur normal")
     @PostMapping("/users/{userId}/demote-from-admin")
     public ResponseEntity<PromotionResponseDto> demoteFromAdmin(
@@ -139,6 +213,13 @@ public class AdminController {
     }
 
 
+    /**
+     * Removes a specific role from a user identified by their customer ID.
+     *
+     * @param customerId the ID of the customer whose role is to be removed
+     * @param roleType the type of role to be removed from the customer
+     * @return a ResponseEntity containing a SuccessResponseDto indicating the success of the role removal operation
+     */
     @DeleteMapping("/users/{customerId}/roles/{roleType}")
     public ResponseEntity<?> removeRole(@PathVariable Long customerId, @PathVariable RoleType roleType) {
 
@@ -149,6 +230,14 @@ public class AdminController {
         ));
     }
 
+    /**
+     * Retrieves a paginated list of all users along with their associated roles.
+     * The users are represented as {@link CustomerWithRolesDto}.
+     *
+     * @param pageable the pagination information, including page size and page number
+     * @return a {@code ResponseEntity} containing a {@code Page} object of {@code CustomerWithRolesDto},
+     *         which represents the user data along with their roles
+     */
     @GetMapping("/users")
     public ResponseEntity<Page<CustomerWithRolesDto>> getAllUsers(@PageableDefault(size = 20) Pageable pageable) {
 
@@ -157,6 +246,18 @@ public class AdminController {
     }
 
     // Déterminer le prochain rôle dans la hiérarchie
+
+    /**
+     * Determines the next role to be assigned to a customer based on their current role.
+     *
+     * This method evaluates the current role of the provided customer and identifies the
+     * next role in the role hierarchy. If the customer already possesses the highest role
+     * (ADMIN), an exception is thrown.
+     *
+     * @param customer the customer whose role needs to be evaluated and promoted
+     * @return the next {@code RoleType} in the hierarchy for the given customer
+     * @throws BusinessException if the customer already has the highest role (ADMIN)
+     */
     private RoleType determineNextRole(Customer customer) {
         if (customer.isAdmin()) {
             throw exceptionFactory.businessError("L'utilisateur a déjà le rôle le plus élevé");
@@ -171,10 +272,17 @@ public class AdminController {
         return RoleType.ROLE_EMPLOYEE;
     }
 
-    // =====================================================
     // GESTION DES COMMANDES
-    // =====================================================
 
+    /**
+     * Retrieves all pending orders.
+     * This method interacts with the order service to fetch a list of orders
+     * that are currently in a pending state, which is then returned
+     * as a response entity.
+     *
+     * @return a ResponseEntity containing a list of OrderResponseDto objects
+     *         representing the pending orders
+     */
     @Operation(summary = "Obtenir toutes les commandes en attente")
     @GetMapping("/orders")
     public ResponseEntity<List<OrderResponseDto>> getAllPendingOrders() {
@@ -182,6 +290,17 @@ public class AdminController {
         return ResponseEntity.ok(iOrderService.getAllPendingOrders());
     }
 
+    /**
+     * Confirms an order by updating its status to "ORDER_STATUS_CONFIRMED".
+     *
+     * This method processes a PATCH request to confirm the order corresponding
+     * to the given order ID. Once confirmed, a response is returned indicating
+     * the success of the operation.
+     *
+     * @param orderId the ID of the order to be confirmed. Must be a positive value.
+     * @return a ResponseEntity containing a ResponseDto object with a status code
+     *         and a message indicating the successful confirmation of the order.
+     */
     @Operation(summary = "Confirmer une commande")
     @PatchMapping("/orders/{orderId}/confirm")
     public ResponseEntity<ResponseDto> confirmOrder(
@@ -193,6 +312,17 @@ public class AdminController {
         );
     }
 
+    /**
+     * Cancels an order by updating its status to "ORDER_STATUS_CANCELLED".
+     *
+     * This method processes a PATCH request to cancel the order corresponding
+     * to the given order ID. Once cancelled, a response is returned
+     * indicating the success of the operation.
+     *
+     * @param orderId the ID of the order to be cancelled. Must be a positive value.
+     * @return a ResponseEntity containing a ResponseDto object with a status code
+     *         and a message indicating the successful cancellation of the order.
+     */
     @Operation(summary = "Annuler une commande")
     @PatchMapping("/orders/{orderId}/cancel")
     public ResponseEntity<ResponseDto> cancelOrder(
@@ -204,9 +334,15 @@ public class AdminController {
         );
     }
 
-    // =====================================================
+
     // GESTION DES MESSAGES DE CONTACT
-    // =====================================================
+
+    /**
+     * Retrieves all open messages from the system.
+     *
+     * @return a ResponseEntity containing a list of ContactResponseDto objects representing
+     *         all messages that are marked as open.
+     */
     @Operation(summary = "Obtenir tous les messages ouverts")
     @GetMapping("/messages")// open
     public ResponseEntity<List<ContactResponseDto>> getAllOpenMessages() {
@@ -214,6 +350,13 @@ public class AdminController {
         return ResponseEntity.ok(iContactService.getAllOpenMessages());
     }
 
+    /**
+     * Closes a contact message based on the provided contact ID and updates its status to closed.
+     *
+     * @param contactId the ID of the contact message to be closed; must be positive
+     * @return a ResponseEntity containing a ResponseDto with the status code and a message indicating
+     *         that the contact message was successfully closed
+     */
     @Operation(summary = "Fermer un message de contact")
     @PatchMapping("/messages/{contactId}/close")
     public ResponseEntity<ResponseDto> closeMessage(
