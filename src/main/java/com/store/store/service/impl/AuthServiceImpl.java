@@ -4,7 +4,7 @@ import com.store.store.dto.LoginRequestDto;
 import com.store.store.dto.LoginResponseDto;
 import com.store.store.dto.RegisterRequestDto;
 import com.store.store.dto.UserDto;
-import com.store.store.dto.AddressDto;
+
 import com.store.store.entity.Customer;
 import com.store.store.entity.RefreshToken;
 import com.store.store.entity.Role;
@@ -26,7 +26,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.authentication.password.CompromisedPasswordChecker;
 import org.springframework.security.authentication.password.CompromisedPasswordDecision;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,22 +35,23 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
+
 
 import static com.store.store.constants.TokenConstants.ACCESS_TOKEN_EXPIRY_SECONDS;
 
 /**
- * Service d'authentification gérant l'inscription et la connexion des utilisateurs.
- *
- * Responsabilités :
- * - Inscription de nouveaux utilisateurs avec validation complète
- * - Connexion des utilisateurs avec génération de JWT + Refresh Token
- * - Vérification des mots de passe compromis
- * - Gestion des doublons (email, mobile)
- *
+
+ * Authentication service managing user registration and login.
+
+ * Responsibilities:
+ * - Registration of new users with full validation
+ * - User login with JWT + Refresh Token generation
+ * Verification of compromised passwords
+ * Management of duplicates (email, mobile)
+
  * @author Kardigué
  * @version 3.0 (JWT + Refresh Token + Cookies)
- * @since 2025-01-27
+ * @since 2025-11-01
  */
 @Service
 @RequiredArgsConstructor
@@ -69,17 +70,17 @@ public class AuthServiceImpl implements IAuthService {
     private final UserMapper userMapper;
 
     /**
-     * Inscrit un nouvel utilisateur après validation complète.
+     * Registers a new user in the system by performing a series of validation and setup steps:
+     * 1. Validates that the password is not compromised.
+     * 2. Ensures there are no duplicate users based on email or mobile number.
+     * 3. Creates a new customer entity.
+     * 4. Assigns initial roles to the new customer.
+     * 5. Persists the customer into the database.
      *
-     * Étapes :
-     * 1. Vérifier que le mot de passe n'est pas compromis
-     * 2. Vérifier qu'il n'y a pas de doublons (email/mobile)
-     * 3. Créer le customer avec le mot de passe hashé
-     * 4. Assigner le rôle USER par défaut
-     * 5. Sauvegarder en base
-     *
-     * @param request Données d'inscription validées par Jakarta
-     * @throws com.store.store.exception.ValidationException si le mot de passe est compromis ou si des doublons existent
+     * @param request The registration request data, including user's name, email, mobile number, and password.
+     *                The request must provide valid and non-blank details for these fields.
+     * @throws com.store.store.exception.ValidationException If the password is compromised.
+     * @throws com.store.store.exception.ValidationException If a user with the same email or mobile number already exists.
      */
     @Override
     @Transactional
@@ -105,22 +106,22 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     /**
-     * Authentifie un utilisateur et génère un token JWT + Refresh Token.
+     * Authenticates a user based on provided login credentials and additional client information,
+     * and returns a response containing access tokens and user details.
      *
-     * VERSION 3.0: Cette méthode accepte maintenant 3 paramètres séparés:
-     * 1. LoginRequestDto - Identifiants de connexion
-     * 2. String ipAddress - Adresse IP du client (pour tracking et sécurité)
-     * 3. String userAgent - User-Agent du navigateur (pour détection d'anomalies)
+     * The method performs the following steps:
+     * 1. Authenticates the user using Spring Security.
+     * 2. Retrieves the authenticated customer's details.
+     * 3. Constructs a UserDto with user and authentication details.
+     * 4. Generates a short-lived JWT token for session management.
+     * 5. Creates and stores a long-lived refresh token.
+     * 6. Builds and returns the login response with all relevant data.
      *
-     * Elle crée DEUX tokens:
-     * 1. Access Token (JWT) - 15 minutes
-     * 2. Refresh Token (UUID) - 7 jours, stocké en base de données avec IP et User-Agent
-     *
-     * @param request Identifiants de connexion (username, password)
-     * @param ipAddress Adresse IP du client (pour audit et sécurité)
-     * @param userAgent User-Agent du navigateur (pour détecter les anomalies)
-     * @return LoginResponseDto contenant les infos utilisateur, JWT et refresh token
-     * @throws org.springframework.security.core.AuthenticationException si les identifiants sont invalides
+     * @param request The login request containing the user's email (username) and password for authentication.
+     * @param ipAddress The IP address of the client attempting the login.
+     * @param userAgent The user agent information of the client's device.
+     * @return A {@link LoginResponseDto} object that provides the login status, user information,
+     *         JWT access token, refresh token, and token expiry information.
      */
     @Override
     @Transactional
@@ -153,7 +154,7 @@ public class AuthServiceImpl implements IAuthService {
                 userAgent
         );
 
-        log.info("✅ Refresh token created and stored in database for user: {} from IP: {}",
+        log.info("Refresh token created and stored in database for user: {} from IP: {}",
                 loggedInUser.getEmail(), ipAddress);
 
         // 6. Construire la réponse
@@ -169,12 +170,17 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     // MÉTHODES PRIVÉES - VALIDATION
+
     /**
-     * Vérifie que le mot de passe n'est pas compromis via HaveIBeenPwned API.
+     * Validates that the provided password has not been previously compromised.
      *
-     * @param password Mot de passe à vérifier
-     * @param email Email de l'utilisateur (pour le logging)
-     * @throws com.store.store.exception.ValidationException si le mot de passe est compromis
+     * This method checks the password against a compromised password database
+     * to ensure it is secure and not already known to be vulnerable. If the password
+     * is found to be compromised, an exception is thrown.
+     *
+     * @param password The password to be validated.
+     * @param email The email associated with the password, used for logging and traceability.
+     * @throws com.store.store.exception.ValidationException If the password is detected as compromised.
      */
     private void validatePasswordNotCompromised(String password, String email) {
         log.debug("Checking password compromise for email: {}", email);
@@ -193,10 +199,12 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     /**
-     * Vérifie qu'il n'existe pas déjà un utilisateur avec le même email ou mobile.
+     * Checks if there are any duplicate users in the system based on the email or mobile number
+     * provided in the registration request. If duplicates are found, a validation error is thrown.
      *
-     * @param request Données d'inscription
-     * @throws com.store.store.exception.ValidationException si des doublons sont détectés
+     * @param request The registration request containing user details such as email and mobile number,
+     *                which are used to check for duplicates.
+     * @throws com.store.store.exception.ValidationException If a user with the same email or mobile number already exists.
      */
     private void checkNoDuplicates(RegisterRequestDto request) {
         log.debug("Checking for duplicate email or mobile for: {}", request.getEmail());
@@ -216,11 +224,18 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     /**
-     * Construit un map d'erreurs détaillant les champs dupliqués.
+     * Builds a map of duplicate error messages for a given customer based on email and mobile number.
      *
-     * @param existingCustomer Customer existant en base
-     * @param request Nouvelles données d'inscription
-     * @return Map avec les champs en erreur
+     * The method compares the provided customer's email and mobile number with the ones in the
+     * registration request. If duplicates are found, corresponding localized error messages are added
+     * to the map.
+     *
+     * @param existingCustomer The existing customer whose details will be checked for conflicts.
+     * @param request The registration request containing the email and mobile number to check
+     *                against the existing customer's information.
+     * @return A map containing error messages for duplicate fields. The keys represent the field names
+     *         (e.g., "email", "mobileNumber") and the values are the corresponding localized error
+     *         messages (e.g., email or mobile number already exists).
      */
     private Map<String, String> buildDuplicateErrors(Customer existingCustomer, RegisterRequestDto request) {
         Map<String, String> errors = new HashMap<>();
@@ -237,11 +252,15 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     // MÉTHODES PRIVÉES - CRÉATION
+
     /**
-     * Crée un nouveau Customer à partir des données d'inscription.
+     * Creates a new Customer instance based on the provided RegisterRequestDto.
+     * Copies properties from the request to the Customer entity,
+     * hashes the password provided in the request, and populates the password hash in the Customer object.
      *
-     * @param request Données d'inscription
-     * @return Customer initialisé (non sauvegardé)
+     * @param request The registration request data containing user details such as name, email, mobile number, and password.
+     *                The request must provide valid and non-blank details for these fields.
+     * @return A Customer object populated with the data from the registration request, including the hashed password.
      */
     private Customer createCustomer(RegisterRequestDto request) {
         log.debug("Creating new customer for email: {}", request.getEmail());
@@ -256,11 +275,15 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     /**
-     * Assigne les rôles initiaux à un nouveau customer.
-     * Par défaut : ROLE_USER
+     * Assigns initial roles to a newly created customer based on the registration request information.
      *
-     * @param customer Customer à qui assigner les rôles
-     * @param request Données d'inscription (peut contenir des infos pour déterminer les rôles)
+     * This method determines the appropriate roles for the customer using the role assignment
+     * service and sets these roles on the customer entity. It is used as part of the user
+     * registration process to ensure that the customer has the correct initial roles for the system.
+     *
+     * @param customer The newly created {@link Customer} entity to which roles will be assigned.
+     * @param request The registration request data that provides context for determining the initial roles,
+     *                such as the customer's email, name, or other relevant data.
      */
     private void assignInitialRoles(Customer customer, RegisterRequestDto request) {
         log.debug("Assigning initial roles for: {}", request.getEmail());
@@ -273,12 +296,17 @@ public class AuthServiceImpl implements IAuthService {
 
 
     // MÉTHODES UTILITAIRES
+
     /**
-     * Récupère un message localisé depuis le fichier messages.properties.
+     * Retrieves a localized message for the specified message code and arguments,
+     * based on the current locale.
      *
-     * @param code Code du message
-     * @param args Arguments optionnels pour le message
-     * @return Message traduit dans la locale courante
+     * The localization is performed using the provided code and optional arguments,
+     * which are formatted into the message retrieved from the underlying message source.
+     *
+     * @param code The code identifying the message in the message source.
+     * @param args Optional arguments used to replace placeholders in the localized message.
+     * @return The localized message as a string, formatted with the given arguments.
      */
     private String getLocalizedMessage(String code, Object... args) {
         return messageSource.getMessage(code, args, LocaleContextHolder.getLocale());

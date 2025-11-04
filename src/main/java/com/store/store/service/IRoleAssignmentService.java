@@ -9,13 +9,20 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.Set;
 
+/**
+ * Interface for managing the assignment and management of user roles.
+ *
+ * @author Kardigué
+ * @version 3.0
+ * @since 2025-11-01
+ */
 public interface IRoleAssignmentService {
 
     Set<Role> determineInitialRoles(RegisterRequestDto registerRequest);
     void promoteToAdmin(Long userId, String promotedByAdmin);
     void demoteFromAdmin(Long userId, String demotedByAdmin);
 
-    // ✅ AJOUTER : Nouvelles méthodes pour gestion complète des rôles
+    // gestion des rôles
     void assignRole(Long customerId, RoleType roleType);
     void removeRole(Long customerId, RoleType roleType);
     Page<CustomerWithRolesDto> getAllCustomersWithRoles(Pageable pageable);

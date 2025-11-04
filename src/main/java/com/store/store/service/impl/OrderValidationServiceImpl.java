@@ -16,17 +16,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Service de validation métier des commandes
+ * Service implementation for order validation.
  *
- * Responsabilités :
- * - Vérifier la cohérence des données de commande
- * - Valider le stock disponible
- * - Vérifier l'état du paiement
- * - Calculer et comparer les totaux
+ * This class is responsible for validating an order request based on various
+ * business rules, including total price matching, product availability,
+ * stock quantity, payment status, and item presence.
  *
- * Utilisé par :
- * - OrderController (endpoint /orders/validate)
- * - OrderServiceImpl (avant création de commande)
+ * It logs the validation process and returns a detailed result indicating
+ * whether the order is valid and, if not, the errors encountered during validation.
+ *
+ * Dependencies:
+ * - ProductRepository for verifying product details and stock.
+ * - MessageSource for retrieving localized error messages.
+ *
+ * @author Kardigué
+ * @version 3.0
+ * @since 2025-11-01
  */
 @Service
 @RequiredArgsConstructor
@@ -37,10 +42,13 @@ public class OrderValidationServiceImpl {
     private final MessageSource messageSource;
 
     /**
-     * Valide une requête de commande complète
+     * Validates the order request by performing checks on total price consistency, product availability,
+     * payment status, and the presence of order items. Constructs a result indicating validation success
+     * or failure along with calculated totals and error details if any.
      *
-     * @param request La requête de commande à valider
-     * @return Résultat de validation avec erreurs détaillées si invalide
+     * @param request the order request containing order details such as items, prices, and payment status
+     * @return an {@code OrderValidationResultDto} object that encapsulates the validation status,
+     *         error messages (if any), the calculated total price, and the expected total price
      */
     public OrderValidationResultDto validateOrder(OrderRequestDto request) {
         log.debug("Validating order request");
@@ -76,7 +84,11 @@ public class OrderValidationServiceImpl {
     }
 
     /**
-     * Calcule le prix total basé sur les items
+     * Calculates the total price of all items in the order request by multiplying each item's price
+     * by its quantity and summing the results.
+     *
+     * @param request the {@code OrderRequestDto} containing the list of items and their details
+     * @return the total price of all items as a {@code BigDecimal}, or {@code BigDecimal.ZERO} if the item list is empty or null
      */
     private BigDecimal calculateTotalPrice(OrderRequestDto request) {
         if (request.getItems() == null || request.getItems().isEmpty()) {
@@ -89,7 +101,12 @@ public class OrderValidationServiceImpl {
     }
 
     /**
-     * Valide la cohérence du total
+     * Validates the consistency of the total price in the order request. Checks that the total price
+     * is present, positive, and matches the calculated total price within an acceptable tolerance.
+     *
+     * @param request the order request containing the total price to be validated
+     * @param calculatedTotal the total price calculated based on the individual items in the order
+     * @param errors the list to store any validation error messages identified during the check
      */
     private void validateTotalPrice(
             OrderRequestDto request,
@@ -118,7 +135,14 @@ public class OrderValidationServiceImpl {
     }
 
     /**
-     * Valide les produits et le stock
+     * Validates the list of products in the order request by checking their existence,
+     * stock availability, and price consistency. Errors for any discrepancies are added
+     * to the provided list of validation error messages.
+     *
+     * @param request the {@code OrderRequestDto} containing the list of order items
+     *                to be validated
+     * @param errors a {@code List} to store validation error messages identified
+     *               during the validation process
      */
     private void validateProducts(OrderRequestDto request, List<String> errors) {
         if (request.getItems() == null) {
@@ -159,7 +183,16 @@ public class OrderValidationServiceImpl {
     }
 
     /**
-     * Valide le statut de paiement
+     * Validates the payment status within the provided order request.
+     * Ensures the payment status is not null or empty, normalizes the
+     * payment status, and checks that it confirms the payment has been
+     * completed successfully. Any identified validation errors are added
+     * to the provided error list.
+     *
+     * @param request the {@code OrderRequestDto} object containing the payment
+     *                status and other order details to be validated.
+     * @param errors  a {@code List} to store validation error messages
+     *                identified during the validation process.
      */
     private void validatePaymentStatus(OrderRequestDto request, List<String> errors) {
         if (request.getPaymentStatus() == null || request.getPaymentStatus().isBlank()) {
@@ -180,7 +213,15 @@ public class OrderValidationServiceImpl {
     }
 
     /**
-     * Valide la présence d'items
+     * Validates the list of order items within the provided order request.
+     * Ensures the item list is not null or empty, checks the total quantity of items,
+     * and validates that the total quantity is within acceptable limits. If any validation
+     * issues are found, corresponding error messages are added to the provided list.
+     *
+     * @param request the {@code OrderRequestDto} containing the list of order items
+     *                to be validated
+     * @param errors a {@code List} to store validation error messages identified
+     *               during the validation process
      */
     private void validateItems(OrderRequestDto request, List<String> errors) {
         if (request.getItems() == null || request.getItems().isEmpty()) {
@@ -206,7 +247,14 @@ public class OrderValidationServiceImpl {
     }
 
     /**
-     * Normalise le statut de paiement Stripe
+     * Normalizes the payment status by converting it to a standardized representation.
+     * If the status is null, it defaults to "failed". Specific statuses are mapped to
+     * predefined values ("paid", "pending", or "failed"), and any unrecognized status
+     * is returned in lowercase.
+     *
+     * @param status the raw payment status as a string, which may be null or in any case format
+     * @return a normalized payment status as a string: "paid", "pending", "failed", or the
+     *         lowercase representation of an unrecognized status
      */
     private String normalizePaymentStatus(String status) {
         if (status == null) {
@@ -222,7 +270,11 @@ public class OrderValidationServiceImpl {
     }
 
     /**
-     * Récupère un message localisé
+     * Retrieves a localized message for the given code and arguments based on the current locale.
+     *
+     * @param code the code identifying the message to be retrieved
+     * @param args the arguments that will be used to replace placeholders in the message
+     * @return a localized message as a string, formatted with the provided arguments
      */
     private String getLocalizedMessage(String code, Object... args) {
         return messageSource.getMessage(code, args, LocaleContextHolder.getLocale());

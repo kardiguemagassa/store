@@ -14,6 +14,31 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 
+/**
+ * Implementation of the {@link IPaymentService} interface providing functionality
+ * to handle payment-related operations using the Stripe API.
+ *
+ * This service is responsible for creating payment intents and processing
+ * related validations to ensure data integrity and proper formatting.
+ * It leverages Stripe's SDK and provides clean abstractions for interacting
+ * with payment workflows.
+ *
+ * Key Features:
+ * - Creates payment intents with specified amount and currency.
+ * - Validates payment request data to ensure correctness.
+ * - Handles internationalization for error messages and validations.
+ * - Incorporates exception handling for errors returned by Stripe API,
+ *   business logic validations, or unexpected issues.
+ *
+ * Dependencies:
+ * - ExceptionFactory: Handles the creation of structured exceptions for
+ *   validation and business errors.
+ * - MessageSource: Supports internationalization and localized error messages.
+ *
+ * @author Kardigué
+ * @version 3.0
+ * @since 2025-11-01
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -22,6 +47,17 @@ public class PaymentServiceImpl implements IPaymentService {
     private final ExceptionFactory exceptionFactory;
     private final MessageSource messageSource;
 
+    /**
+     * Creates a payment intent with the specified amount and currency by interacting with the Stripe API.
+     *
+     * @param requestDto the data transfer object containing the payment amount and currency
+     *                   required for creating the payment intent. Must not be null and
+     *                   must adhere to validation constraints on amount and currency.
+     * @return a {@link PaymentIntentResponseDto} containing the client secret of the newly created
+     *         payment intent. This is required to finalize the payment on the client side.
+     * @throws BusinessException if validation of the request fails, if the client secret
+     *                            returned by Stripe is invalid, or in case of unexpected errors.
+     */
     @Override
     public PaymentIntentResponseDto createPaymentIntent(PaymentIntentRequestDto requestDto) {
         try {
@@ -68,6 +104,16 @@ public class PaymentServiceImpl implements IPaymentService {
     }
 
     // MÉTHODES DE VALIDATION MÉTIER
+
+    /**
+     * Validates the provided payment request data transfer object. Ensures that the request meets
+     * all necessary validation constraints including amount and currency requirements. Throws
+     *
+     * @param requestDto the data transfer object containing payment details such as amount and
+     *                   currency to be validated. Must not be null. The amount must be greater
+     *                   than or equal to 50 cents, and the currency must be a valid ISO 4217
+     *                   code. If validations fail, the method throws appropriate exception.
+     */
     private void validatePaymentRequest(PaymentIntentRequestDto requestDto) {
         if (requestDto == null) {
             throw exceptionFactory.validationError("requestDto",
@@ -97,6 +143,15 @@ public class PaymentServiceImpl implements IPaymentService {
         }
     }
 
+    /**
+     * Validates whether the given currency string is in the correct format.
+     * The currency must be a non-null string consisting of exactly 3 alphabetic characters
+     * (e.g., valid ISO 4217 currency codes).
+     *
+     * @param currency the currency string to validate. Must be a 3-letter string, non-null,
+     *                 and match the pattern of three alphabetic characters (A-Z or a-z).
+     * @return true if the currency string is valid; false otherwise.
+     */
     private boolean isValidCurrency(String currency) {
         // Validation basique du format de devise (3 lettres)
         return currency != null &&
@@ -105,6 +160,15 @@ public class PaymentServiceImpl implements IPaymentService {
     }
 
     // MÉTHODE UTILITAIRE POUR L'INTERNATIONALISATION
+
+    /**
+     * Retrieves a localized message based on the provided message code and arguments, using the current locale
+     * in the LocaleContextHolder. This method delegates to the message source for resolving the message.
+     *
+     * @param code the message code to look up the localized message. Must not be null.
+     * @param args optional array of arguments that can be used to replace placeholders in the message. Can be empty.
+     * @return a localized message string corresponding to the provided code, formatted with the given arguments.
+     */
     private String getLocalizedMessage(String code, Object... args) {
         return messageSource.getMessage(code, args, LocaleContextHolder.getLocale());
     }

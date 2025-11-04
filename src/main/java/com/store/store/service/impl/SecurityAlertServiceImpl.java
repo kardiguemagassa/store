@@ -15,12 +15,18 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Implémentation du service d'alertes de sécurité.
- * Envoie des emails HTML asynchrones pour notifier les utilisateurs d'activités suspectes.
+ * Implementation of the ISecurityAlertService interface for managing security alerts.
+ * Provides functionality to send notifications about suspicious activities,
+ * new device logins, and token revocations to users.
+ *
+ * This class uses asynchronous processing (@Async) for email notifications to improve
+ * application performance and user experience.
+ * Emails are sent with HTML content for better visual presentation, including inline CSS
+ * for enhanced compatibility with various email clients.
  *
  * @author Kardigué
- * @version 2.0 (HTML Support)
- * @since 2025-01-01
+ * @version 3.0
+ * @since 2025-11-01
  */
 @Slf4j
 @Service
@@ -31,25 +37,18 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
     private final JavaMailSender mailSender;
 
     /**
-     * Notifie un utilisateur d'une possible compromission de compte.
+     * Sends a security alert notification to a customer for a potential account compromise incident.
+     * This method operates asynchronously and utilizes HTML for rich email formatting.
      *
-     * IMPORTANT: Méthode asynchrone (@Async) pour ne pas bloquer le thread principal.
-     * L'envoi d'email peut prendre 1-3 secondes, donc on l'exécute en background.
-     *
-     * Utilise HTML pour un meilleur rendu visuel avec CSS inline.
-     *
-     * @param customer Le customer concerné par l'incident
-     * @param ipAddress L'adresse IP suspecte ayant tenté l'action
-     * @param userAgent Le User-Agent (navigateur) utilisé
-     * @param incidentType Le type d'incident (ex: "Replay Attack", "Brute Force", etc.)
+     * @param customer The customer to whom the notification will be sent.
+     *                 Must contain a valid email address.
+     * @param ipAddress The IP address associated with the suspicious activity.
+     * @param userAgent The User-Agent string of the device involved in the suspected incident.
+     * @param incidentType The type or description of the detected security incident.
      */
     @Async
     @Override
-    public void notifyPossibleAccountCompromise(
-            Customer customer,
-            String ipAddress,
-            String userAgent,
-            String incidentType) {
+    public void notifyPossibleAccountCompromise(Customer customer, String ipAddress, String userAgent, String incidentType) {
 
         try {
             // Validation: Vérifier que le customer a un email valide
@@ -61,21 +60,13 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
             log.info("Sending security alert email to: {}", customer.getEmail());
 
             // Formater la date/heure actuelle pour l'email
-            String timestamp = LocalDateTime.now().format(
-                    DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm:ss")
-            );
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm:ss"));
 
             // Extraire informations device lisibles
             String deviceInfo = extractDeviceInfo(userAgent);
 
             // Créer le message HTML avec CSS inline pour compatibilité email
-            String htmlContent = buildSecurityAlertHtml(
-                    customer.getName(),
-                    incidentType,
-                    timestamp,
-                    ipAddress,
-                    deviceInfo
-            );
+            String htmlContent = buildSecurityAlertHtml(customer.getName(), incidentType, timestamp, ipAddress, deviceInfo);
 
             // Créer le MimeMessage pour envoyer du HTML
             MimeMessage message = mailSender.createMimeMessage();
@@ -85,7 +76,7 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
             helper.setSubject("🚨 Alerte Sécurité - Activité Suspecte Détectée");
             helper.setText(htmlContent, true);  // true = HTML content
 
-            // Optionnel: Ajouter un "from" personnalisé
+            // Optionnel: personnalisé
             // helper.setFrom("security@eazystore.com");
 
             // Envoyer l'email
@@ -95,26 +86,22 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
 
         } catch (MessagingException e) {
             // Erreur spécifique à la création du message
-            log.error("Failed to create security alert email for {}: {}",
-                    customer.getEmail(), e.getMessage(), e);
+            log.error("Failed to create security alert email for {}: {}", customer.getEmail(), e.getMessage(), e);
         } catch (Exception e) {
             // Logger l'erreur mais ne pas propager l'exception
             // (l'envoi d'email ne doit pas faire échouer l'opération principale)
-            log.error("Failed to send security alert email to {}: {}",
-                    customer.getEmail(), e.getMessage(), e);
+            log.error("Failed to send security alert email to {}: {}", customer.getEmail(), e.getMessage(), e);
         }
     }
 
     /**
-     * Notifie un utilisateur d'une connexion depuis un nouvel appareil.
+     * Sends a notification to a customer when a new device is used to log into their account.
+     * The notification includes details such as the IP address, timestamp, and device information.
+     * This method is executed asynchronously.
      *
-     * Email informatif (non critique) pour awareness de l'utilisateur.
-     * Méthode asynchrone pour ne pas impacter la performance.
-     * Utilise HTML pour meilleur rendu.
-     *
-     * @param customer Le customer concerné
-     * @param ipAddress L'adresse IP du nouvel appareil
-     * @param userAgent Le User-Agent du nouvel appareil
+     * @param customer The customer to whom the notification will be sent. Must contain a valid email address.
+     * @param ipAddress The IP address of the device used during the login.
+     * @param userAgent The User-Agent string describing the browser or device used for the login.
      */
     @Async
     @Override
@@ -131,25 +118,18 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
 
             log.info("Sending new device notification to: {}", customer.getEmail());
 
-            String timestamp = LocalDateTime.now().format(
-                    DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm:ss")
-            );
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm:ss"));
 
             String deviceInfo = extractDeviceInfo(userAgent);
 
             // Créer le contenu HTML
-            String htmlContent = buildNewDeviceLoginHtml(
-                    customer.getName(),
-                    timestamp,
-                    ipAddress,
-                    deviceInfo
-            );
+            String htmlContent = buildNewDeviceLoginHtml(customer.getName(), timestamp, ipAddress, deviceInfo);
 
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setTo(customer.getEmail());
-            helper.setSubject("ℹ️ Nouvelle Connexion Détectée");
+            helper.setSubject("Nouvelle Connexion Détectée");
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
@@ -157,28 +137,24 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
             log.info("New device notification sent successfully to: {}", customer.getEmail());
 
         } catch (MessagingException e) {
-            log.error("Failed to create new device notification for {}: {}",
-                    customer.getEmail(), e.getMessage(), e);
+            log.error("Failed to create new device notification for {}: {}", customer.getEmail(), e.getMessage(), e);
         } catch (Exception e) {
-            log.error("Failed to send new device notification to {}: {}",
-                    customer.getEmail(), e.getMessage(), e);
+            assert customer != null;
+            log.error("Failed to send new device notification to {}: {}", customer.getEmail(), e.getMessage(), e);
         }
     }
 
     /**
-     * Notifie un utilisateur que tous ses tokens ont été révoqués.
+     * Sends a notification to a customer indicating that all active tokens have been revoked.
+     * The notification is sent via email and includes details about the revocation and its reason.
+     * This method is executed asynchronously.
      *
-     * Email critique suite à une action de sécurité majeure.
-     * Méthode asynchrone. Utilise HTML.
-     *
-     * @param customer Le customer concerné
-     * @param reason La raison de révocation (ex: "Activité suspecte détectée")
+     * @param customer The customer to whom the notification will be sent. Must contain a valid email address.
+     * @param reason The reason for the revocation of all tokens.
      */
     @Async
     @Override
-    public void notifyAllTokensRevoked(
-            Customer customer,
-            String reason) {
+    public void notifyAllTokensRevoked(Customer customer, String reason) {
 
         try {
             if (customer == null || customer.getEmail() == null || customer.getEmail().isBlank()) {
@@ -188,16 +164,10 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
 
             log.info("Sending tokens revoked notification to: {}", customer.getEmail());
 
-            String timestamp = LocalDateTime.now().format(
-                    DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm:ss")
-            );
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy à HH:mm:ss"));
 
             // Créer le contenu HTML
-            String htmlContent = buildTokensRevokedHtml(
-                    customer.getName(),
-                    reason,
-                    timestamp
-            );
+            String htmlContent = buildTokensRevokedHtml(customer.getName(), reason, timestamp);
 
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -214,25 +184,22 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
             log.error("Failed to create tokens revoked notification for {}: {}",
                     customer.getEmail(), e.getMessage(), e);
         } catch (Exception e) {
-            log.error("Failed to send tokens revoked notification to {}: {}",
-                    customer.getEmail(), e.getMessage(), e);
+            assert customer != null;
+            log.error("Failed to send tokens revoked notification to {}: {}", customer.getEmail(), e.getMessage(), e);
         }
     }
 
-    // ============================================
     // MÉTHODES PRIVÉES - HTML TEMPLATES
-    // ============================================
 
     /**
-     * Construit le HTML pour l'email d'alerte de sécurité.
-     * Utilise CSS inline pour compatibilité avec tous les clients email.
+     * Generates an HTML string for a security alert notification sent to a customer.
      *
-     * @param customerName Nom du customer
-     * @param incidentType Type d'incident détecté
-     * @param timestamp Date et heure de l'incident
-     * @param ipAddress IP suspecte
-     * @param deviceInfo Information sur l'appareil/navigateur
-     * @return HTML formaté de l'email
+     * @param customerName the name of the customer receiving the alert
+     * @param incidentType the type of security incident that occurred
+     * @param timestamp the date and time when the incident was detected
+     * @param ipAddress the IP address involved in the incident
+     * @param deviceInfo information about the device associated with the incident
+     * @return a string containing the HTML content of the security alert message
      */
     private String buildSecurityAlertHtml(
             String customerName,
@@ -378,7 +345,13 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
     }
 
     /**
-     * Construit le HTML pour l'email de nouvelle connexion device.
+     * Builds the HTML content for the "new device login" notification email.
+     *
+     * @param customerName the name of the customer to address in the email
+     * @param timestamp the date and time of the detected login
+     * @param ipAddress the IP address from which the login was made
+     * @param deviceInfo details about the device used for the login
+     * @return a string representing the formatted HTML content for the email
      */
     private String buildNewDeviceLoginHtml(
             String customerName,
@@ -485,7 +458,13 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
     }
 
     /**
-     * Construit le HTML pour l'email de révocation de tokens.
+     * Builds an HTML string for a notification email indicating that tokens have been revoked,
+     * including the customer name, reason, and timestamp.
+     *
+     * @param customerName the name of the customer to include in the email.
+     * @param reason the reason for the token revocation.
+     * @param timestamp the timestamp of the revocation event.
+     * @return an HTML string formatted for a token revocation email.
      */
     private String buildTokensRevokedHtml(
             String customerName,
@@ -589,11 +568,11 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
     }
 
     /**
-     * Extrait les informations lisibles depuis le User-Agent.
-     * Simplifie l'affichage pour l'utilisateur final.
+     * Extracts information about the browser and operating system from a given User-Agent string.
+     * If the User-Agent string is null or empty, it returns a default message indicating an unknown device.
      *
-     * @param userAgent Le User-Agent brut
-     * @return Une description lisible de l'appareil/navigateur
+     * @param userAgent the User-Agent string containing details of the browser and operating system
+     * @return a string in the format "Browser on OS", or "Appareil inconnu" for unknown devices
      */
     private String extractDeviceInfo(String userAgent) {
         if (userAgent == null || userAgent.isBlank()) {

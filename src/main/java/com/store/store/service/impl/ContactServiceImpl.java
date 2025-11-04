@@ -21,6 +21,25 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Implementation of the {@link IContactService} interface to handle operations
+ * related to contact messages. This class provides functionality for saving
+ * contact messages, retrieving open messages, and updating the status of a contact message.
+ *
+ * It interacts with the database through the {@link ContactRepository} and
+ * handles exceptions using the {@link ExceptionFactory}.
+ *
+ * The business logic ensures:
+ * - Validation of message fields and status updates.
+ * - Transformation of data between DTOs and entity models.
+ * - Localization for error and validation messages.
+ *
+ * This service is transactional and ensures data integrity during its operations.
+ *
+ * @author Kardigué
+ * @version 1.0
+ * @since 2025-10-01
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -30,6 +49,15 @@ public class ContactServiceImpl implements IContactService {
     private final ExceptionFactory exceptionFactory;
     private final MessageSource messageSource;
 
+    /**
+     * Saves a contact message represented by the given DTO into the database.
+     * Logs the process and handles potential exceptions.
+     *
+     * @param contactRequestDto the contact request data transfer object containing details such as
+     *                          name, email, mobile number, and message to be saved
+     * @return true if the contact message is successfully saved, otherwise throws appropriate exceptions
+     * @throws BusinessException if there is a business error during the saving process, with localized error messages
+     */
     @Override
     @Transactional
     public boolean saveContact(ContactRequestDto contactRequestDto) {
@@ -56,6 +84,16 @@ public class ContactServiceImpl implements IContactService {
         }
     }
 
+    /**
+     * Retrieves all contact messages with an open status from the database.
+     * Logs the operation and handles any potential exceptions during the process.
+     *
+     * This method maps the retrieved Contact entities to their corresponding
+     * ContactResponseDto objects.
+     *
+     * @return a list of ContactResponseDto objects representing all open contact messages
+     * @throws BusinessException if there is a business or unexpected error during the retrieval process
+     */
     @Override
     @Transactional(readOnly = true)
     public List<ContactResponseDto> getAllOpenMessages() {
@@ -83,6 +121,18 @@ public class ContactServiceImpl implements IContactService {
         }
     }
 
+    /**
+     * Updates the status of a contact message in the database for the given contact ID.
+     * Uses various validation steps to ensure that the provided parameters and the
+     * status transition are valid. Handles and logs potential exceptions that may arise
+     * during the process.
+     *
+     * @param contactId the unique identifier of the contact whose status needs to be updated
+     * @param status the new status to be set for the contact message
+     * @throws ContactNotFoundException if the contact with the given ID is not found
+     * @throws BusinessException if there is a validation or business logic error during status update
+     * @throws DataAccessException if a database-related error occurs during the update process
+     */
     @Override
     @Transactional
     public void updateMessageStatus(Long contactId, String status) {
@@ -126,6 +176,15 @@ public class ContactServiceImpl implements IContactService {
     }
 
     // MÉTHODES DE VALIDATION MÉTIER
+
+    /**
+     * Validates the parameters provided for updating the status of a contact message.
+     * Ensures that the contact ID is valid, the status is non-null and not empty,
+     * and that the status provided is a valid status.
+     *
+     * @param contactId the unique identifier of the contact to be updated; must be non-null and greater than 0
+     * @param status the new status to be applied; must be non-null, non-empty, and a valid status
+     */
     private void validateUpdateParameters(Long contactId, String status) {
         if (contactId == null || contactId <= 0) {
             throw exceptionFactory.validationError("contactId",
@@ -143,6 +202,14 @@ public class ContactServiceImpl implements IContactService {
         }
     }
 
+    /**
+     * Validates the transition from the current status to the new status for a contact message.
+     * Ensures that invalid or prohibited status transitions are flagged with appropriate errors.
+     *
+     * @param currentStatus the current status of the contact message; must be a valid status from ApplicationConstants
+     * @param newStatus the new status to which the contact message is transitioning; must be a valid status from ApplicationConstants
+     * @throws BusinessException if the transition from the current status to the new status is not allowed
+     */
     private void validateStatusTransition(String currentStatus, String newStatus) {
         if (ApplicationConstants.CLOSED_MESSAGE.equals(currentStatus) &&
                 ApplicationConstants.OPEN_MESSAGE.equals(newStatus)) {
@@ -159,6 +226,14 @@ public class ContactServiceImpl implements IContactService {
         }
     }
 
+    /**
+     * Checks whether the given status is valid. A valid status is one of the predefined
+     * statuses specified in the {@code ApplicationConstants} class.
+     *
+     * @param status the status string to be validated; must not be null or empty
+     * @return true if the provided status matches one of the valid statuses (OPEN_MESSAGE, CLOSED_MESSAGE, or IN_PROGRESS_MESSAGE),
+     *         otherwise false
+     */
     private boolean isValidStatus(String status) {
         return ApplicationConstants.OPEN_MESSAGE.equals(status) ||
                 ApplicationConstants.CLOSED_MESSAGE.equals(status) ||
@@ -166,6 +241,17 @@ public class ContactServiceImpl implements IContactService {
     }
 
     // METHODES DE MAPPING
+
+    /**
+     * Maps the given Contact entity to a ContactResponseDto object.
+     * Transforms the fields from the Contact entity to their corresponding fields
+     * in the ContactResponseDto record.
+     *
+     * @param contact the Contact entity to be mapped, containing properties such as
+     *                contactId, name, email, mobileNumber, message, and status
+     * @return a ContactResponseDto object populated with the data from the provided
+     *         Contact entity
+     */
     private ContactResponseDto mapToContactResponseDTO(Contact contact) {
         return new ContactResponseDto(
                 contact.getContactId(),
@@ -177,6 +263,17 @@ public class ContactServiceImpl implements IContactService {
         );
     }
 
+    /**
+     * Transforms a ContactRequestDto object into a Contact entity.
+     * Copies the properties from the DTO to the entity and sets
+     * the status to a predefined value.
+     *
+     * @param contactRequestDto the data transfer object containing details
+     *                          such as name, email, mobile number, and message.
+     *                          Used for mapping to the Contact entity.
+     * @return a Contact entity populated with the data from the given DTO
+     *         and the default status value set.
+     */
     private Contact transformToEntity(ContactRequestDto contactRequestDto) {
         Contact contact = new Contact();
         BeanUtils.copyProperties(contactRequestDto, contact);
@@ -184,6 +281,16 @@ public class ContactServiceImpl implements IContactService {
         return contact;
     }
 
+    /**
+     * Retrieves a localized message based on the given message code and argument values.
+     *
+     * This method utilizes the message source to resolve the provided message code into
+     * a localized message string, using the current locale from the LocaleContextHolder.
+     *
+     * @param code the message code to be resolved into a localized message, must not be null or empty
+     * @param args optional arguments to be inserted into the message, if applicable
+     * @return the localized message corresponding to the given code and arguments
+     */
     private String getLocalizedMessage(String code, Object... args) {
         return messageSource.getMessage(code, args, LocaleContextHolder.getLocale());
     }
