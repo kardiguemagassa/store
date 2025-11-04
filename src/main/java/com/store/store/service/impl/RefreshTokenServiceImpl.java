@@ -2,7 +2,7 @@ package com.store.store.service.impl;
 
 import com.store.store.dto.LoginResponseDto;
 import com.store.store.dto.UserDto;
-import com.store.store.dto.AddressDto;
+
 import com.store.store.entity.Customer;
 import com.store.store.entity.RefreshToken;
 import com.store.store.mapper.UserMapper;
@@ -12,27 +12,28 @@ import com.store.store.service.IRefreshTokenService;
 import com.store.store.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static com.store.store.constants.TokenConstants.ACCESS_TOKEN_EXPIRY_SECONDS;
 
 /**
- * Implémentation du service de gestion des Refresh Tokens.
+ * Service implementation for managing refresh tokens.
+ * Provides functionality for creating, verifying, refreshing, revoking, and deleting refresh tokens.
+ * Also includes utilities for token rotation and security checks.
  *
  * @author Kardigué
- * @version 3.0 - Ajout de refreshAccessToken pour cookies HttpOnly
- * @since 2025-01-27
+ * @version 3.0 - Added refreshAccessToken for HttpOnly cookies
+ * @since 2025-11-01
  */
 @Slf4j
 @Service
@@ -48,12 +49,14 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
     private long refreshTokenExpirationMs;
 
     /**
-     * Crée un nouveau refresh token pour un customer.
+     * Creates a new refresh token for the specified customer. The refresh token includes
+     * various details such as token UUID, expiry date, customer information, IP address,
+     * User-Agent, and device information. The token is persisted in the database and returned.
      *
-     * ✅ CORRECTION: Utiliser directement Instant.now().plusMillis()
-     * ❌ AVANT: Instant.from(LocalDateTime.from(...)) → Exception!
-     * ✅ APRÈS: Instant.now().plusMillis(...) → Direct et correct
-     * Extraction automatique du device_info depuis le User-Agent
+     * @param customer The customer for whom the refresh token is created.
+     * @param ipAddress The IP address of the client creating the token.
+     * @param userAgent The User-Agent string of the client's browser or application.
+     * @return The created and saved {@code RefreshToken} entity.
      */
     @Override
     @Transactional
@@ -78,11 +81,18 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
     }
 
     /**
-     * Vérifie qu'un refresh token est valide.
+     * Verifies the validity of the provided refresh token.
      *
-     * ✅ CORRECTION: Comparaison directe d'Instant
-     * ❌ AVANT: Instant.from(ChronoLocalDateTime.from(...)) → Conversion inutile
-     * ✅ APRÈS: refreshToken.getExpiryDate().isBefore(Instant.now()) → Simple
+     * This method checks the following conditions:
+     * 1. The refresh token exists in the repository.
+     * 2. The refresh token is not revoked.
+     * 3. The refresh token has not expired.
+     *
+     * If any of these conditions fail, an {@code IllegalArgumentException} will be thrown.
+     *
+     * @param token the refresh token to be verified
+     * @return the verified {@code RefreshToken} entity
+     * @throws IllegalArgumentException if the token is not found, revoked, or expired
      */
     @Override
     public RefreshToken verifyRefreshToken(String token) {
@@ -103,21 +113,15 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
     }
 
     /**
-     * ✅ NOUVEAU: Renouvelle le JWT en utilisant un refresh token valide.
+     * Refreshes the access token for a user based on the provided refresh token, IP address,
+     * and User-Agent. This process involves verifying the refresh token, validating the origin
+     * of the request, revoking the old refresh token, and generating new tokens.
      *
-     * Cette méthode implémente le flux complet de refresh token avec rotation :
-     * 1. Vérifie la validité du refresh token
-     * 2. Vérifie l'IP et le User-Agent pour détecter les vols de token
-     * 3. Révoque l'ancien refresh token (sécurité)
-     * 4. Génère un nouveau JWT avec JwtUtil
-     * 5. Génère un nouveau refresh token (token rotation)
-     * 6. Retourne LoginResponseDto avec tous les nouveaux tokens
-     *
-     * @param token Le refresh token reçu du cookie
-     * @param ipAddress L'adresse IP actuelle du client
-     * @param userAgent Le User-Agent actuel du client
-     * @return LoginResponseDto avec nouveau JWT et refresh token
-     * @throws IllegalArgumentException si le token est invalide ou si détection de vol
+     * @param token The refresh token provided by the client.
+     * @param ipAddress The IP address of the client making the request.
+     * @param userAgent The User-Agent string from the client's request.
+     * @return A {@code LoginResponseDto} containing the new access token, refresh token,
+     *         user information, and token expiry time.
      */
     @Override
     @Transactional
@@ -153,7 +157,7 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
         RefreshToken newRefreshToken = createRefreshToken(customer, ipAddress, userAgent);
         log.info("New refresh token created for customer: {}", customer.getEmail());
 
-        // 7. Construire le UserDto (✅ UTILISE UserMapper)
+        // 7. Construire le UserDto (UTILISE UserMapper)
         UserDto userDto = userMapper.toUserDto(customer, authentication);
 
         // 8. Construire la réponse (même format que login)
@@ -168,6 +172,15 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
         );
     }
 
+    /**
+     * Revokes the refresh token identified by the provided token string.
+     *
+     * This method searches for the refresh token in the repository. If a matching token is found,
+     * it marks the token as revoked and updates it in the database. A log entry is also created
+     * to indicate that the token has been successfully revoked.
+     *
+     * @param token the refresh token string that needs to be revoked
+     */
     @Override
     @Transactional
     public void revokeRefreshToken(String token) {
@@ -178,6 +191,16 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
         });
     }
 
+    /**
+     * Revokes all non-revoked refresh tokens associated with a given customer.
+     *
+     * The method retrieves all active (non-revoked) refresh tokens for the specified customer ID,
+     * revokes each of them by setting their 'revoked' property to true,
+     * and saves the updated token entities back to the repository. A warning
+     * log entry is made to indicate the number of tokens revoked for the customer.
+     *
+     * @param customerId the ID of the customer whose tokens are to be revoked
+     */
     @Override
     @Transactional
     public void revokeAllTokensForCustomer(Long customerId) {
@@ -191,6 +214,16 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
         log.warn("All {} refresh tokens revoked for customer ID: {}", tokens.size(), customerId);
     }
 
+    /**
+     * Deletes all expired refresh tokens from the repository.
+     *
+     * This method identifies and removes refresh tokens whose expiry date
+     * is earlier than the current timestamp. The operation is executed in
+     * a transactional context to ensure atomicity. Logs the number of tokens
+     * deleted upon execution.
+     *
+     * @return the number of expired refresh tokens that were successfully deleted
+     */
     @Override
     @Transactional
     public int deleteExpiredTokens() {
@@ -199,59 +232,49 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
         return deleted;
     }
 
+    /**
+     * Retrieves all active (non-revoked) refresh tokens associated with a specific customer.
+     *
+     * @param customerId the unique identifier of the customer for whom the active tokens are retrieved
+     * @return a list of {@code RefreshToken} entities that are active and associated with the given customer
+     */
     @Override
     public List<RefreshToken> getActiveTokensForCustomer(Long customerId) {
         return refreshTokenRepository.findByCustomer_CustomerIdAndRevokedFalse(customerId);
     }
 
-    // ============================================
     // MÉTHODES UTILITAIRES PRIVÉES
-    // ============================================
 
     /**
-     * ✅ Crée un objet Authentication à partir d'un Customer.
+     * Creates an {@code Authentication} object from the given {@code Customer} entity.
      *
-     * Nécessaire pour générer un JWT avec JwtUtil.generateJwtToken()
-     * qui attend un Authentication en paramètre.
+     * This method wraps the provided {@code Customer} into a {@code CustomerUserDetails} object,
+     * which is then used to construct a {@code UsernamePasswordAuthenticationToken} with
+     * associated authorities.
      *
-     * Cette méthode reproduit le même comportement que lors du login :
-     * - Créer un CustomerUserDetails à partir du Customer
-     * - Créer un UsernamePasswordAuthenticationToken avec les authorities
-     *
-     * @param customer Le customer authentifié
-     * @return Authentication contenant les infos et authorities
+     * @param customer the {@code Customer} entity for which the authentication is to be created
+     * @return an {@code Authentication} object representing the customer's credentials
      */
     private Authentication createAuthenticationFromCustomer(Customer customer) {
         CustomerUserDetails userDetails = new CustomerUserDetails(customer);
 
-        return new UsernamePasswordAuthenticationToken(
-                userDetails,
-                null,
-                userDetails.getAuthorities()
-        );
+        return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
     }
 
     /**
-     * ✅ SÉCURITÉ: Vérifie si la requête provient de la même origine.
+     * Determines whether the origin of the current request matches the origin
+     * associated with the provided refresh token. The comparison is based on
+     * the IP address and User-Agent of the request and the stored refresh token.
      *
-     * Compare l'IP et le User-Agent du refresh token avec ceux de la requête actuelle.
-     * Aide à détecter les vols de refresh token.
+     * This method employs a flexible strategy where a match in either the IP address
+     * or the User-Agent is deemed sufficient for a successful origin match.
      *
-     * ⚠️ IMPORTANT: Cette vérification peut être trop stricte pour les utilisateurs mobiles
-     * qui changent fréquemment de réseau (WiFi → 4G → WiFi).
-     *
-     * Stratégie actuelle : FLEXIBLE
-     * - Retourne true si au moins l'IP OU le User-Agent correspond
-     * - Logger un warning si les deux diffèrent
-     * - Ne pas bloquer (meilleure UX)
-     *
-     * Alternative STRICTE (plus sécurisé mais moins UX-friendly) :
-     * - return sameIp && sameUserAgent;
-     *
-     * @param refreshToken Le refresh token original
-     * @param currentIp L'IP actuelle
-     * @param currentUserAgent Le User-Agent actuel
-     * @return true si même origine (flexible), false sinon
+     * @param refreshToken the {@code RefreshToken} object containing the original IP address
+     *                     and User-Agent recorded during token creation
+     * @param currentIp the current IP address associated with the request
+     * @param currentUserAgent the current User-Agent string from the request
+     * @return {@code true} if the origin of the request matches the origin associated
+     *         with the refresh token (based on IP address or User-Agent); {@code false} otherwise
      */
     private boolean isSameOrigin(RefreshToken refreshToken, String currentIp, String currentUserAgent) {
         // Vérifier l'IP (null-safe)
@@ -267,7 +290,7 @@ public class RefreshTokenServiceImpl implements IRefreshTokenService {
         // Stratégie FLEXIBLE : Au moins un des deux correspond
         return sameIp || sameUserAgent;
 
-        // Stratégie STRICTE (décommenter si vous voulez bloquer les changements) :
+        // Stratégie STRICTE (décommenter si on veux bloquer les changements) :
         // return sameIp && sameUserAgent;
     }
 }
