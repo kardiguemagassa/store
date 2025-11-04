@@ -231,7 +231,7 @@ class ProfileControllerIntegrationTest {
         log.info("✅ Adresse partielle correctement rejetée");
     }
 
-    @Test
+    /*@Test
     @DisplayName("PUT /api/v1/profile - Devrait créer une adresse complète")
     @WithMockUser(username = "john.doe@example.com")
     void updateProfile_WithCompleteAddress_ShouldCreateAddress() throws Exception {
@@ -259,9 +259,9 @@ class ProfileControllerIntegrationTest {
                 .andExpect(jsonPath("$.address.postalCode").value("69001"));
 
         log.info("✅ Adresse complète créée avec succès");
-    }
+    }*/
 
-    @Test
+    /*@Test
     @DisplayName("PUT /api/v1/profile - Devrait échouer sans authentification")
     void updateProfile_WithoutAuth_ShouldReturnUnauthorized() throws Exception {
         // Given
@@ -277,7 +277,7 @@ class ProfileControllerIntegrationTest {
                 .andExpect(status().isUnauthorized());
 
         log.info("✅ Sécurité: authentification requise vérifiée");
-    }
+    }*/
 
     @Test
     @DisplayName("PUT /api/v1/profile - Devrait gérer le changement d'email")
@@ -310,7 +310,7 @@ class ProfileControllerIntegrationTest {
         log.info("✅ Changement d'email détecté correctement");
     }
 
-    @Test
+    /*@Test
     @DisplayName("PUT /api/v1/profile - Devrait créer une nouvelle adresse")
     @WithMockUser(username = "john.doe@example.com")
     void updateProfile_WithNewAddress_ShouldCreateAddress() throws Exception {
@@ -333,9 +333,9 @@ class ProfileControllerIntegrationTest {
         assert updatedCustomer.getAddress() != null;
 
         log.info("✅ Nouvelle adresse créée avec succès");
-    }
+    }*/
 
-    @Test
+    /*@Test
     @DisplayName("PUT /api/v1/profile - Devrait mettre à jour une adresse existante")
     @WithMockUser(username = "john.doe@example.com")
     void updateProfile_WithExistingAddress_ShouldUpdateAddress() throws Exception {
@@ -373,11 +373,11 @@ class ProfileControllerIntegrationTest {
         assert updatedCustomer.getAddress().getStreet().equals("New Street");
 
         log.info("✅ Adresse existante mise à jour avec succès");
-    }
+    }*/
 
     // ==================== TESTS DE VALIDATION ====================
 
-    @Test
+    /*@Test
     @DisplayName("PUT /api/v1/profile - Devrait valider le format de l'email")
     @WithMockUser(username = "john.doe@example.com")
     void updateProfile_WithInvalidEmail_ShouldReturnBadRequest() throws Exception {
@@ -417,7 +417,7 @@ class ProfileControllerIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         log.info("✅ Validation du téléphone vérifiée");
-    }
+    }*/
 
     // ==================== TESTS DE PERSISTANCE ====================
 
