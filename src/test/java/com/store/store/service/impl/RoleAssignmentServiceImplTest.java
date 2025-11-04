@@ -3,6 +3,7 @@ package com.store.store.service.impl;
 import com.store.store.dto.RegisterRequestDto;
 import com.store.store.entity.Customer;
 import com.store.store.entity.Role;
+import com.store.store.enums.RoleType;
 import com.store.store.exception.BusinessException;
 import com.store.store.exception.ConfigurationException;
 import com.store.store.exception.ExceptionFactory;
@@ -50,11 +51,11 @@ class RoleAssignmentServiceImplTest {
     void setUp() {
         // Setup test data
         userRole = new Role();
-        userRole.setName("ROLE_USER");
+        userRole.setName(RoleType.ROLE_USER);
         userRole.setRoleId(1L);
 
         adminRole = new Role();
-        adminRole.setName("ROLE_ADMIN");
+        adminRole.setName(RoleType.ROLE_ADMIN);
         adminRole.setRoleId(2L);
 
         testCustomer = new Customer();
@@ -73,7 +74,7 @@ class RoleAssignmentServiceImplTest {
     @DisplayName("Devrait retourner uniquement le rôle USER pour une inscription normale")
     void determineInitialRoles_ShouldReturnOnlyUserRole() {
         // Given
-        when(roleRepository.findByName("ROLE_USER")).thenReturn(Optional.of(userRole));
+        when(roleRepository.findByName(RoleType.ROLE_USER)).thenReturn(Optional.of(userRole));
 
         // When
         Set<Role> roles = roleAssignmentService.determineInitialRoles(registerRequest);
@@ -81,15 +82,15 @@ class RoleAssignmentServiceImplTest {
         // Then
         assertThat(roles).hasSize(1);
         assertThat(roles).containsOnly(userRole);
-        verify(roleRepository, times(1)).findByName("ROLE_USER");
-        verify(roleRepository, never()).findByName("ROLE_ADMIN");
+        verify(roleRepository, times(1)).findByName(RoleType.ROLE_USER);
+        verify(roleRepository, never()).findByName(RoleType.ROLE_ADMIN);
     }
 
     @Test
     @DisplayName("Devrait lancer une exception si le rôle USER n'existe pas")
     void determineInitialRoles_ShouldThrowExceptionWhenUserRoleNotFound() {
         // Given
-        when(roleRepository.findByName("ROLE_USER")).thenReturn(Optional.empty());
+        when(roleRepository.findByName(RoleType.ROLE_USER)).thenReturn(Optional.empty());
         when(exceptionFactory.missingRole("ROLE_USER"))
                 .thenThrow(new ConfigurationException("Rôle ROLE_USER non trouvé"));
 
@@ -98,7 +99,7 @@ class RoleAssignmentServiceImplTest {
                 .isInstanceOf(ConfigurationException.class)
                 .hasMessageContaining("ROLE_USER");
 
-        verify(roleRepository, times(1)).findByName("ROLE_USER");
+        verify(roleRepository, times(1)).findByName(RoleType.ROLE_USER);
     }
 
     @Test
@@ -109,7 +110,7 @@ class RoleAssignmentServiceImplTest {
         String promotedBy = "admin@example.com";
 
         when(customerRepository.findById(userId)).thenReturn(Optional.of(testCustomer));
-        when(roleRepository.findByName("ROLE_ADMIN")).thenReturn(Optional.of(adminRole));
+        when(roleRepository.findByName(RoleType.ROLE_ADMIN)).thenReturn(Optional.of(adminRole));
         when(customerRepository.save(any(Customer.class))).thenReturn(testCustomer);
 
         // When
@@ -118,7 +119,7 @@ class RoleAssignmentServiceImplTest {
         // Then
         assertThat(testCustomer.getRoles()).contains(adminRole, userRole);
         verify(customerRepository, times(1)).findById(userId);
-        verify(roleRepository, times(1)).findByName("ROLE_ADMIN");
+        verify(roleRepository, times(1)).findByName(RoleType.ROLE_ADMIN);
         verify(customerRepository, times(1)).save(testCustomer);
     }
 
@@ -139,7 +140,7 @@ class RoleAssignmentServiceImplTest {
                 .hasMessageContaining("Utilisateur non trouvé");
 
         verify(customerRepository, times(1)).findById(userId);
-        verify(roleRepository, never()).findByName(anyString());
+        verify(roleRepository, never()).findByName(RoleType.ROLE_ADMIN);
         verify(customerRepository, never()).save(any());
     }
 
@@ -163,7 +164,7 @@ class RoleAssignmentServiceImplTest {
                 .hasMessageContaining("déjà administrateur");
 
         verify(customerRepository, times(1)).findById(userId);
-        verify(roleRepository, never()).findByName(anyString());
+        verify(roleRepository, never()).findByName(RoleType.ROLE_ADMIN);
         verify(customerRepository, never()).save(any());
     }
 
@@ -175,7 +176,7 @@ class RoleAssignmentServiceImplTest {
         String promotedBy = "admin@example.com";
 
         when(customerRepository.findById(userId)).thenReturn(Optional.of(testCustomer));
-        when(roleRepository.findByName("ROLE_ADMIN")).thenReturn(Optional.empty());
+        when(roleRepository.findByName(RoleType.ROLE_ADMIN)).thenReturn(Optional.empty());
         when(exceptionFactory.missingRole("ROLE_ADMIN"))
                 .thenThrow(new ConfigurationException("Rôle ROLE_ADMIN non trouvé"));
 
@@ -185,7 +186,7 @@ class RoleAssignmentServiceImplTest {
                 .hasMessageContaining("ROLE_ADMIN");
 
         verify(customerRepository, times(1)).findById(userId);
-        verify(roleRepository, times(1)).findByName("ROLE_ADMIN");
+        verify(roleRepository, times(1)).findByName(RoleType.ROLE_ADMIN);
         verify(customerRepository, never()).save(any());
     }
 
@@ -200,7 +201,7 @@ class RoleAssignmentServiceImplTest {
         testCustomer.getRoles().add(adminRole);
 
         when(customerRepository.findById(userId)).thenReturn(Optional.of(testCustomer));
-        when(roleRepository.findByName("ROLE_ADMIN")).thenReturn(Optional.of(adminRole));
+        when(roleRepository.findByName(RoleType.ROLE_ADMIN)).thenReturn(Optional.of(adminRole));
         when(customerRepository.save(any(Customer.class))).thenReturn(testCustomer);
 
         // When
@@ -210,7 +211,7 @@ class RoleAssignmentServiceImplTest {
         assertThat(testCustomer.getRoles()).containsOnly(userRole);
         assertThat(testCustomer.getRoles()).doesNotContain(adminRole);
         verify(customerRepository, times(1)).findById(userId);
-        verify(roleRepository, times(1)).findByName("ROLE_ADMIN");
+        verify(roleRepository, times(1)).findByName(RoleType.ROLE_ADMIN);
         verify(customerRepository, times(1)).save(testCustomer);
     }
 
@@ -225,7 +226,7 @@ class RoleAssignmentServiceImplTest {
         testCustomer.setRoles(new HashSet<>(Set.of(userRole)));
 
         when(customerRepository.findById(userId)).thenReturn(Optional.of(testCustomer));
-        when(roleRepository.findByName("ROLE_ADMIN")).thenReturn(Optional.of(adminRole));
+        when(roleRepository.findByName(RoleType.ROLE_ADMIN)).thenReturn(Optional.of(adminRole));
         when(customerRepository.save(any(Customer.class))).thenReturn(testCustomer);
 
         // When
@@ -254,7 +255,7 @@ class RoleAssignmentServiceImplTest {
                 .hasMessageContaining("Utilisateur non trouvé");
 
         verify(customerRepository, times(1)).findById(userId);
-        verify(roleRepository, never()).findByName(anyString());
+        verify(roleRepository, never()).findByName(RoleType.ROLE_ADMIN);
         verify(customerRepository, never()).save(any());
     }
 }

@@ -5,6 +5,7 @@ import com.store.store.dto.LoginRequestDto;
 import com.store.store.dto.RegisterRequestDto;
 import com.store.store.entity.Customer;
 import com.store.store.entity.Role;
+import com.store.store.enums.RoleType;
 import com.store.store.repository.CustomerRepository;
 import com.store.store.repository.RoleRepository;
 import com.store.store.util.JwtUtil;
@@ -59,7 +60,7 @@ class AuthControllerIntegrationTest {
         customerRepository.deleteAll();
         roleRepository.deleteAll();
 
-        userRole = TestDataBuilder.createRoleEntity("ROLE_USER");
+        //userRole = TestDataBuilder.createRoleEntity("ROLE_USER");
         userRole = roleRepository.save(userRole);
     }
 
@@ -274,7 +275,7 @@ class AuthControllerIntegrationTest {
             // Vérification du rôle
             assertThat(saved.getRoles())
                     .extracting(Role::getName)
-                    .containsExactly("ROLE_USER");
+                    .containsExactly(RoleType.ROLE_USER);
 
             log.info("Mot de passe encodé et rôle assigné correctement");
         }

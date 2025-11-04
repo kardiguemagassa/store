@@ -1,6 +1,7 @@
 package com.store.store.repository;
 
 import com.store.store.entity.Role;
+import com.store.store.enums.RoleType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,13 +30,13 @@ class RoleRepositoryCacheTest {
     void shouldCacheRolesByName() {
         // Given
         Role role = new Role();
-        role.setName("ROLE_CACHED");
+        role.setName(RoleType.ROLE_USER);
         role.setCreatedBy("system");
         role.setCreatedAt(Instant.now());
         roleRepository.save(role);
 
         // When - Premier appel (CACHE MISS)
-        Optional<Role> firstCall = roleRepository.findByName("ROLE_CACHED");
+        Optional<Role> firstCall = roleRepository.findByName(RoleType.ROLE_USER);
 
         // Then - Vérifier le cache
         Cache rolesCache = cacheManager.getCache("roles");
@@ -43,7 +44,7 @@ class RoleRepositoryCacheTest {
         assertThat(rolesCache.get("ROLE_CACHED")).isNotNull();
 
         // When - Deuxième appel (CACHE HIT)
-        Optional<Role> secondCall = roleRepository.findByName("ROLE_CACHED");
+        Optional<Role> secondCall = roleRepository.findByName(RoleType.ROLE_USER);
 
         // Then
         assertThat(firstCall).isPresent();

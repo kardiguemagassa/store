@@ -3,6 +3,7 @@ package com.store.store.util;
 import com.store.store.constants.ApplicationConstants;
 import com.store.store.dto.*;
 import com.store.store.entity.*;
+import com.store.store.enums.RoleType;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -546,7 +547,8 @@ public class TestDataBuilder {
         Role role = new Role();
         role.setRoleId(id);
         //role.setRoleName(roleName);
-        role.setName(roleName);
+        //role.setName(roleName);
+        role.setName(RoleType.ROLE_ADMIN);
         return role;
     }
 

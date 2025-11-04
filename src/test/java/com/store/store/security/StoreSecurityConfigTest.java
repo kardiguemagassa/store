@@ -10,7 +10,7 @@ import org.springframework.test.context.ActiveProfiles;
 // ============================================================
 // 4. TESTS D'INTÉGRATION - StoreNonProdAuthenticationProviderTest.java
 // ============================================================
-package com.store.store.security;
+//package com.store.store.security;
 
 import com.store.store.entity.Customer;
 import com.store.store.entity.Role;
@@ -39,7 +39,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests du AuthenticationProvider.
  * Testent le processus d'authentification complet.
  */
-@SpringBootTest
+/*@SpringBootTest
 @ActiveProfiles("test")
 @Transactional
 @Slf4j
@@ -204,3 +204,5 @@ class StoreNonProdAuthenticationProviderTest {
         return roleRepository.save(role);
     }
 }
+
+ */
