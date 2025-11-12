@@ -9,9 +9,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * A record that implements the {@code UserDetails} interface, wrapping a {@code Customer} entity.
- * This record is used to adapt the {@code Customer} entity to the Spring Security {@code UserDetails} interface,
- * providing authentication and authorization details.
+ * Enregistrement implémentant l'interface {@code UserDetails} et encapsulant une entité {@code Customer}.
+ * Cet enregistrement permet d'adapter l'entité {@code Customer} à l'interface {@code UserDetails} de Spring Security,
+ * fournissant les informations d'authentification et d'autorisation.
  *
  * @author Kardigué
  * @version 2.0
@@ -20,14 +20,13 @@ import java.util.stream.Collectors;
 public record CustomerUserDetails(Customer customer) implements UserDetails {
 
     /**
-     * Constructor for the CustomerUserDetails record. Validates the provided Customer object
-     * and ensures that its email and password fields are non-null and not blank.
-     *
-     * @param customer the Customer object to encapsulate. Must not be null.
-     *                 The email of the customer must not be null or blank.
-     *                 The password hash of the customer must not be null or blank.
-     * @throws IllegalArgumentException if the customer is null, the email is null or blank,
-     *                                  or the password hash is null or blank.
+     * Constructeur de l'enregistrement CustomerUserDetails. Valide l'objet Customer fourni
+     * et vérifie que ses champs email et mot de passe ne sont ni nuls ni vides.
+     * @param customer l'objet Customer à encapsuler. Ne doit pas être nul.
+     * L'adresse email du client ne doit pas être nulle ni vide.
+     * Le hachage du mot de passe du client ne doit pas être nul ni vide.
+     * @throws IllegalArgumentException si le client est nul, si l'adresse email est nulle ou vide,
+     * ou si le hachage du mot de passe est nul ou vide.
      */
     public CustomerUserDetails {
         if (customer == null) {
@@ -42,13 +41,12 @@ public record CustomerUserDetails(Customer customer) implements UserDetails {
     }
 
     /**
-     * Retrieves the collection of granted authorities associated with the customer's roles.
-     * This method transforms the roles of the customer into a collection of {@code GrantedAuthority} objects.
-     * Each role is mapped to a {@link SimpleGrantedAuthority}
-     * using the role's name.
-     *
-     * @return a collection of {@code GrantedAuthority} objects representing the customer's authorities,
-     *         or an empty collection if the customer has no roles or the roles are null.
+     * Récupère la collection des autorisations accordées aux rôles du client.
+     * Cette méthode transforme les rôles du client en une collection d'objets {@code GrantedAuthority}.
+     * Chaque rôle est associé à un objet {@link SimpleGrantedAuthority}
+     * à l'aide du nom du rôle.
+     * @return une collection d'objets {@code GrantedAuthority} représentant les autorisations du client,
+     * ou une collection vide si le client ne possède aucun rôle ou si ses rôles sont nuls.
      */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -61,9 +59,8 @@ public record CustomerUserDetails(Customer customer) implements UserDetails {
     }
 
     /**
-     * Retrieves the password hash of the associated customer.
-     *
-     * @return the password hash of the customer as a String.
+     * Récupère le hachage du mot de passe du client associé.
+     * @return le hachage du mot de passe du client sous forme de chaîne de caractères.
      */
     @Override
     public String getPassword() {
@@ -71,10 +68,9 @@ public record CustomerUserDetails(Customer customer) implements UserDetails {
     }
 
     /**
-     * Retrieves the username associated with the customer.
-     * This method returns the email address of the customer, which serves as the username.
-     *
-     * @return the email address of the customer as a String, representing the username.
+     * Récupère le nom d'utilisateur associé au client.
+     * Cette méthode renvoie l'adresse e-mail du client, qui sert de nom d'utilisateur.
+     * @return l'adresse e-mail du client sous forme de chaîne de caractères, représentant le nom d'utilisateur.
      */
     @Override
     public String getUsername() {
@@ -82,11 +78,10 @@ public record CustomerUserDetails(Customer customer) implements UserDetails {
     }
 
     /**
-     * Indicates whether the customer's account is non-expired.
-     * This method returns a constant value of {@code true}, implying
-     * that the account is never considered expired.
-     *
-     * @return {@code true} if the account is non-expired; otherwise, {@code false}.
+     * Indique si le compte du client est actif.
+     * Cette méthode renvoie la valeur constante {@code true}, ce qui signifie
+     * que le compte n'est jamais considéré comme expiré.
+     * @return {@code true} si le compte est actif; sinon, {@code false}.
      */
     @Override
     public boolean isAccountNonExpired() {
@@ -94,11 +89,11 @@ public record CustomerUserDetails(Customer customer) implements UserDetails {
     }
 
     /**
-     * Checks whether the customer's account is not locked.
-     * This method always returns {@code true}, implying that the account
-     * is never considered locked.
+     * Vérifie si le compte du client n'est pas verrouillé.
+     * Cette méthode renvoie toujours {@code true}, ce qui signifie que le compte
+     * n'est jamais considéré comme verrouillé.
      *
-     * @return {@code true} if the account is not locked; otherwise, {@code false}.
+     * @return {@code true} si le compte n'est pas verrouillé; sinon, {@code false}.
      */
     @Override
     public boolean isAccountNonLocked() {
@@ -106,11 +101,10 @@ public record CustomerUserDetails(Customer customer) implements UserDetails {
     }
 
     /**
-     * Indicates whether the customer's credentials are non-expired.
-     * This method always returns {@code true}, indicating that the credentials
-     * are never considered expired.
-     *
-     * @return {@code true} if the credentials are non-expired; otherwise, {@code false}.
+     * Indique si les identifiants du client sont valides.
+     * Cette méthode renvoie toujours {@code true}, indiquant que les identifiants
+     * ne sont jamais considérés comme expirés.
+     * @return {@code true} si les identifiants sont valides; sinon, {@code false}.
      */
     @Override
     public boolean isCredentialsNonExpired() {
@@ -118,11 +112,10 @@ public record CustomerUserDetails(Customer customer) implements UserDetails {
     }
 
     /**
-     * Indicates whether the customer's account is enabled.
-     * This method always returns {@code true}, implying that the account
-     * is permanently enabled and cannot be disabled.
-     *
-     * @return {@code true} if the account is enabled; otherwise, {@code false}.
+     * Indique si le compte du client est activé.
+     * Cette méthode renvoie toujours {@code true}, ce qui signifie que le compte
+     * est activé de façon permanente et ne peut pas être désactivé.
+     * @return {@code true} si le compte est activé; sinon, {@code false}.
      */
     @Override
     public boolean isEnabled() {

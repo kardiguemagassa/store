@@ -11,22 +11,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service for loading {@link UserDetails} based on a user's email.
- * This class implements {@link UserDetailsService} to provide
- * a bridge for integrating custom user details into Spring Security.
- *
- * This implementation specifically handles loading {@code Customer} entities, along with their associated roles,
- * to create a {@code UserDetails} object that integrates with the authentication system.
- *
- * Characteristics:
- * - Uses {@link Transactional} to manage lazy-loaded
- *   relations and ensure proper initialization of associated roles.
- * - Loads roles eagerly to avoid {@link org.hibernate.LazyInitializationException}.
- * - Handles user lookup by their email address (username).
- *
+ * Service de chargement des {@link UserDetails} à partir de l'adresse e-mail d'un utilisateur.
+ * Cette classe implémente {@link UserDetailsService} pour fournir
+ * une passerelle permettant d'intégrer des détails utilisateur personnalisés à Spring Security.
+ * Cette implémentation gère spécifiquement le chargement des entités {@code Customer}, ainsi que leurs rôles associés,
+ * afin de créer un objet {@code UserDetails} qui s'intègre au système d'authentification.
+ * Caractéristiques:
+ * - Utilise {@link Transactional} pour gérer le chargement différé
+ * des relations et garantir l'initialisation correcte des rôles associés.
+ * - Charge les rôles de manière immédiate afin d'éviter une {@link org.hibernate.LazyInitializationException}.
+ * - Gère la recherche d'utilisateurs par leur adresse e-mail (nom d'utilisateur).
  * @author Kardigué
- * @version 3.0 - Production Ready
+ * @version 3.0 - Prêt pour la production
  * @since 2025-10-27
+
  */
 @Slf4j
 @Service
@@ -36,14 +34,13 @@ public class CustomerUserDetailsService implements UserDetailsService {
     private final CustomerRepository customerRepository;
 
     /**
-     * Loads user details based on the provided username, which represents the user's email.
-     * This method retrieves a {@code Customer} entity from the database along with all associated roles.
-     * The method converts the {@code Customer} entity to a {@code UserDetails} object for integration with
-     * the Spring Security framework.
-     *
-     * @param username the email address of the user to be loaded.
-     * @return a {@code UserDetails} object containing the user's information and roles.
-     * @throws UsernameNotFoundException if no user is found with the specified email address.
+     * Charge les informations de l'utilisateur à partir du nom d'utilisateur fourni, qui représente son adresse e-mail.
+     * Cette méthode récupère une entité {@code Customer} de la base de données ainsi que tous les rôles associés.
+     * La méthode convertit l'entité {@code Customer} en un objet {@code UserDetails} pour l'intégration avec
+     * le framework Spring Security.
+     * @param username l'adresse e-mail de l'utilisateur à charger.
+     * @return un objet {@code UserDetails} contenant les informations et les rôles de l'utilisateur.
+     * @throws UsernameNotFoundException si aucun utilisateur n'est trouvé avec l'adresse e-mail spécifiée.
      */
     @Override
     @Transactional(readOnly = true)

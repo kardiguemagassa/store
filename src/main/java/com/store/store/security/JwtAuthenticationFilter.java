@@ -25,24 +25,21 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * JwtAuthenticationFilter is a custom implementation of OncePerRequestFilter responsible
- * for validating JWT tokens and setting up the authenticated user's security context.
- * It ensures that only authorized users can access protected resources, while ignoring
- * specified public paths.
- *
- * This filter operates as follows:
- * 1. Extracts the JWT from the Authorization header of incoming requests.
- * 2. Validates the JWT's signature and expiration.
- * 3. Loads user details from the UserDetailsService for the authenticated user.
- * 4. Sets up the SecurityContext if the token and user details are valid.
- *
- * Authentication errors such as token expiration, invalid format, or signature issues
- * are logged and passed to the AuthenticationEntryPoint without explicitly throwing exceptions.
- * Public paths are excluded from the JWT validation process to optimize the filter's performance.
- *
- * @author Kardigué
- *  @version 3.0 - Production Ready
- *  @since 2025-10-27
+ * JwtAuthenticationFilter est une implémentation personnalisée de OncePerRequestFilter chargée
+ * de valider les jetons JWT et de configurer le contexte de sécurité de l'utilisateur authentifié.
+ * Il garantit que seuls les utilisateurs autorisés peuvent accéder aux ressources protégées, tout en ignorant
+ * les chemins publics spécifiés.
+ * Ce filtre fonctionne comme suit :
+ * 1. Il extrait le JWT de l'en-tête Authorization des requêtes entrantes.
+ * 2. Il valide la signature et l'expiration du JWT.
+ * 3. Il charge les informations de l'utilisateur depuis le UserDetailsService pour l'utilisateur authentifié.
+ * 4. Il configure le SecurityContext si le jeton et les informations de l'utilisateur sont valides.
+ * Les erreurs d'authentification, telles que l'expiration du jeton, un format invalide ou des problèmes de signature,
+ * sont consignées et transmises à l'AuthenticationEntryPoint sans lever d'exceptions explicites.
+ * Les chemins publics sont exclus du processus de validation du JWT afin d'optimiser les performances du filtre.
+ * @auteur Kardigué
+ * @version 3.0 - Prêt pour la production
+ * @since 2025-10-27
  */
 @Slf4j
 @Component
@@ -62,19 +59,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     /**
      * Filtre principal - Validation JWT et configuration du SecurityContext.
-     *
      * FLUX:
-     * 1. Extraire JWT → 2. Valider → 3. Charger User → 4. Set Authentication
-     *
-     * GESTION DES ERREURS:
-     * - ExpiredJwtException: Token expiré → Log warning, continue (401 via EntryPoint)
-     * - SignatureException: Signature invalide → Log error, continue
-     * - MalformedJwtException: Format invalide → Log error, continue
-     * - UsernameNotFoundException: User supprimé → Log error, continue
-     * - Autres: Log error, continue
-     *
-     * Note: On ne lance PAS d'exception ici car le AuthenticationEntryPoint
-     * gère les erreurs 401 de manière centralisée.
+     * 1. Extraire JWT → 2. Valider → 3. Utilisateur du chargeur → 4. Définir l'authentification
+     *GESTION DES ERREURS:
+     * - ExpiredJwtException: Token expiré → Avertissement de journal, continuez (401 via EntryPoint)
+     * - SignatureException: Signature invalide → Erreur de journalisation, continuer
+     * - MalformedJwtException: Format invalide → Erreur de journalisation, continuer
+     * - UsernameNotFoundException: utilisateur supprimé → Erreur de journalisation, continuer
+     * - Autres: erreur de journalisation, continuer
+     * Remarque : On ne lance PAS d'exception ici car le AuthenticationEntryPoint
+     * gérer les erreurs 401 de manière centralisée.
      */
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
@@ -154,12 +148,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Determines whether the given HTTP request should bypass filtering.
-     * This method checks if the request URI matches any predefined public paths
-     * and skips JWT validation if it matches.
-     *
-     * @param request the HTTP request being processed
-     * @return true if the request should bypass filtering and not be processed further, false otherwise
+     * Détermine si la requête HTTP donnée doit ignorer le filtrage.
+     * Cette méthode vérifie si l'URI de la requête correspond à un chemin public prédéfini
+     * et ignore la validation JWT si c'est le cas.
+     * @param request la requête HTTP en cours de traitement
+     * @return true si la requête doit ignorer le filtrage et ne pas être traitée davantage, false sinon
      */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -176,14 +169,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Extracts the JWT token from the provided HTTP request.
-     * The method checks the value of the "Authorization" header in the request, verifies that it starts
-     * with the expected bearer token prefix, and extracts the token from the header if valid.
-     *
-     * @param request the {@code HttpServletRequest} from which the JWT token is to be extracted.
-     *                It must contain an "Authorization" header with a valid bearer token to succeed.
-     * @return the extracted JWT token as a {@code String}, or {@code null} if the header is missing,
-     *         does not start with the expected prefix, or is otherwise invalid.
+     * Extrait le jeton JWT de la requête HTTP fournie.
+     * La méthode vérifie la valeur de l'en-tête « Authorization» dans la requête, s'assure qu'il commence
+     * par le préfixe attendu du jeton porteur et extrait le jeton de l'en-tête s'il est valide.
+     * @param request la {@code HttpServletRequest} à partir de laquelle le jeton JWT doit être extrait.
+     * Pour que l'extraction réussisse, elle doit contenir un en-tête «Authorization» avec un jeton porteur valide.
+     * @return le jeton JWT extrait sous forme de {@code String}, ou {@code null} si l'en-tête est absent,
+     * ne commence pas par le préfixe attendu ou est invalide pour une autre raison.
      */
     private String extractJwtFromRequest(HttpServletRequest request) {
         final String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
