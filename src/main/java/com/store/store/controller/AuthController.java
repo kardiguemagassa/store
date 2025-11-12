@@ -1,16 +1,20 @@
 package com.store.store.controller;
 
 import com.store.store.constants.ErrorCodes;
-import com.store.store.dto.*;
+import com.store.store.dto.auth.LoginRequestDto;
+import com.store.store.dto.auth.LoginResponseDto;
+import com.store.store.dto.auth.RegisterRequestDto;
+import com.store.store.dto.common.ApiResponse;
 import com.store.store.entity.RefreshToken;
 import com.store.store.service.IAuthService;
 import com.store.store.service.IRefreshTokenService;
 import com.store.store.service.ISecurityAlertService;
+
+import com.store.store.service.impl.MessageServiceImpl;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
@@ -20,128 +24,170 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.MessageSource;
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * Contrôleur REST pour l'authentification et l'inscription des utilisateurs.
-
- * VERSION 4.0 - SÉCURITÉ AVANCÉE :
- * Refresh token dans cookie HttpOnly
- * Détection de replay attacks
- * Vérification IP/UserAgent
- * Rate limiting
- * Alertes de sécurité
+ * Contrôleur REST pour l'authentification et la gestion des sessions utilisateur.
+ *
+ * <p><strong>Fonctionnalités principales :</strong>
+ * <ul>
+ *   <li>🔐 Connexion (login) avec JWT + Refresh Token</li>
+ *   <li>📝 Inscription (register) avec validation complète</li>
+ *   <li>🔄 Renouvellement de token (refresh) avec rotation</li>
+ *   <li>🚪 Déconnexion (logout) avec révocation des tokens</li>
+ * </ul>
+ *
+ * <p><strong>Sécurité avancée :</strong>
+ * <ul>
+ *   <li>🍪 Refresh token dans cookie HttpOnly</li>
+ *   <li>🔍 Détection de replay attacks</li>
+ *   <li>🌐 Vérification IP/User-Agent</li>
+ *   <li>⏱️ Rate limiting sur /refresh</li>
+ *   <li>📧 Alertes de sécurité par email</li>
+ * </ul>
+ *
+ * <p><strong>Architecture de tokens :</strong>
+ * <pre>
+ * Access Token (JWT)
+ * ├─ Stockage : Cookie "accessToken" (HttpOnly)
+ * ├─ Durée : 15 minutes
+ * ├─ Usage : Authentification des requêtes API
+ * └─ Contenu : userId, email, roles
+ *
+ * Refresh Token (UUID)
+ * ├─ Stockage : Cookie "refreshToken" (HttpOnly)
+ * ├─ Durée : 7 jours
+ * ├─ Usage : Renouvellement du access token
+ * └─ Base de données : Stocké en BDD avec metadata
+ * </pre>
+ *
+ * <p><strong>Flux d'authentification :</strong>
+ * <pre>
+ * 1. POST /login
+ *    → Validation credentials
+ *    → Génération JWT + Refresh Token
+ *    → Stockage tokens dans cookies HttpOnly
+ *    → Retour ApiResponse&lt;LoginResponseDto&gt;
+ *
+ * 2. Access token expire (15 min)
+ *    → Frontend appelle POST /refresh
+ *    → Validation refresh token (UUID)
+ *    → Rotation : ancien token révoqué, nouveau créé
+ *    → Retour nouveaux tokens
+ *
+ * 3. POST /logout
+ *    → Révocation du refresh token en BDD
+ *    → Suppression des cookies
+ *    → Session terminée
+ * </pre>
  *
  * @author Kardigué
- * @version 4.0 (Security Enhanced)
- * @since 2025-10-31
+ * @version 5.0 - Production Ready avec ApiResponse
+ * @since 2025-01-01
+ *
+ * @see IAuthService
+ * @see IRefreshTokenService
+ * @see ApiResponse
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-@Tag(name = "Authentication", description = "API d'authentification et d'inscription")
+@Tag(name = "Authentication", description = "API d'authentification et de gestion des sessions")
 public class AuthController {
 
     private final IAuthService authService;
     private final IRefreshTokenService refreshTokenService;
     private final ISecurityAlertService securityAlertService;
-    private final MessageSource messageSource;
+    private final MessageServiceImpl messageService;
 
     @Value("${store.refresh-token.expiration-ms:604800000}")
-    private long refreshTokenExpirationMs;
+    private long refreshTokenExpirationMs; // 7 jours par défaut
 
-    /**
-     * Authenticates a user and returns a JWT along with a Refresh Token.
-     *
-     * @param loginRequest The login request payload containing user credentials.
-     * @param request The HTTP servlet request.
-     * @param response The HTTP servlet response to add cookies or modify headers.
-     * @return A ResponseEntity containing the LoginResponseDto with the authentication details
-     *         including the JWT and Refresh Token.
-     */
+    // ENDPOINT : LOGIN
     @PostMapping("/login")
     @Operation(
             summary = "Connexion utilisateur",
-            description = "Authentifie un utilisateur et retourne JWT + Refresh Token"
+            description = "Authentifie un utilisateur et retourne JWT + Refresh Token dans des cookies HttpOnly"
     )
     @ApiResponses(value = {
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "Connexion réussie",
                     content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(implementation = LoginResponseDto.class)
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
                     )
             ),
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
                     description = "Identifiants invalides",
                     content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(implementation = ErrorResponseDto.class)
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
                     )
             )
     })
-    public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto loginRequest,
+    public ResponseEntity<ApiResponse<LoginResponseDto>> login(
+            @Valid @RequestBody LoginRequestDto loginRequest,
             HttpServletRequest request,
-            HttpServletResponse response
-    ) {
+            HttpServletResponse response) {
 
         String ipAddress = getClientIpAddress(request);
         String userAgent = request.getHeader("User-Agent");
 
-        LoginResponseDto loginResponse = authService.login(loginRequest, ipAddress, userAgent);
+        log.info("Login attempt for username: {} from IP: {}", loginRequest.username(), ipAddress);
 
+        // Authentification via le service
+        LoginResponseDto loginResponseDto = authService.login(loginRequest, ipAddress, userAgent);
+
+        // Ajouter le refresh token dans un cookie HttpOnly
         Cookie refreshTokenCookie = createRefreshTokenCookie(
-                loginResponse.refreshToken(),
+                loginResponseDto.refreshToken(),
                 refreshTokenExpirationMs
         );
         response.addCookie(refreshTokenCookie);
 
         log.info("Login successful for user: {}", loginRequest.username());
 
-        return ResponseEntity.ok(loginResponse);
+        // Construire ApiResponse avec message localisé
+        String successMessage = messageService.getMessage("api.success.auth.login");
+
+        ApiResponse<LoginResponseDto> apiResponse = ApiResponse.success(successMessage, loginResponseDto)
+                .withPath("/api/v1/auth/login");
+
+        return ResponseEntity.ok(apiResponse);
     }
 
-    /**
-     * Registers a new user with full validation.
-     * Validates the input data in the request body and processes the registration.
-     *
-     * @param registerRequestDto the DTO containing the registration details of the user
-     *                           such as email, password, and other required information
-     * @return ResponseEntity containing a SuccessResponseDto if the registration is successful
-     *         with HTTP status 201 (Created); otherwise, it will throw an appropriate exception
-     *         for HTTP status 400 (Bad Request) in case of invalid data or duplicate entries
-     */
+    // ENDPOINT : REGISTER
     @PostMapping("/register")
     @Operation(
             summary = "Inscription utilisateur",
-            description = "Inscrit un nouvel utilisateur avec validation complète"
+            description = "Inscrit un nouvel utilisateur avec validation complète (email unique, password fort, etc.)"
     )
     @ApiResponses(value = {
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "201",
                     description = "Inscription réussie",
                     content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(implementation = SuccessResponseDto.class)
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
                     )
             ),
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "Données invalides ou doublons détectés",
+                    description = "Données invalides ou email/mobile déjà utilisé",
                     content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(implementation = ErrorResponseDto.class)
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
                     )
             )
     })
-    public ResponseEntity<SuccessResponseDto> registerUser(@Valid @RequestBody RegisterRequestDto registerRequestDto) {
+    public ResponseEntity<ApiResponse<Void>> registerUser(
+            @Valid @RequestBody RegisterRequestDto registerRequestDto) {
 
         log.debug("Registration attempt for email: {}", registerRequestDto.getEmail());
 
@@ -149,24 +195,20 @@ public class AuthController {
 
         log.info("User registered successfully: {}", registerRequestDto.getEmail());
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(SuccessResponseDto.created(
-                        getLocalizedMessage("success.user.registered")
-                ));
+        // Message localisé via MessageService
+        String successMessage = messageService.getMessage("api.success.auth.register");
+
+        ApiResponse<Void> response = ApiResponse.<Void>created(successMessage, null)
+                .withPath("/api/v1/auth/register");
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    // ENDPOINT : REFRESH TOKEN
     /**
-     * Refreshes the JWT using the refresh token from the HttpOnly cookie. Implements token rotation
-     * and replay attack detection.
-     *
-     * @param request  the HttpServletRequest object, used to retrieve the refresh token and client details.
-     * @param response the HttpServletResponse object, used to update the cookie with a new refresh token.
-     * @return a ResponseEntity containing a serialized LoginResponseDto on success or an ErrorResponseDto
-     *         on failure. Possible HTTP response codes include:
-     *         - 200 (OK): Token successfully refreshed.
-     *         - 401 (Unauthorized): Refresh token is invalid, expired, revoked, or missing.
-     *         - 429 (Too Many Requests): Rate limiting triggered due to excessive attempts.
+     * + Cookie mis à jour :
+     * - refreshToken=660f9511-...; HttpOnly; Secure; SameSite=Lax
+     * </pre>
      */
     @PostMapping("/refresh")
     @RateLimiter(name = "refresh", fallbackMethod = "refreshRateLimitFallback")
@@ -176,71 +218,79 @@ public class AuthController {
                     "Implémente la rotation des tokens et détection des replay attacks."
     )
     @ApiResponses(value = {
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "Token renouvelé avec succès",
                     content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(implementation = LoginResponseDto.class)
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
                     )
             ),
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
                     description = "Refresh token invalide, expiré ou absent",
                     content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(implementation = ErrorResponseDto.class)
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
                     )
             ),
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "429",
                     description = "Trop de tentatives",
                     content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(implementation = ErrorResponseDto.class)
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
                     )
             )
     })
-    public ResponseEntity<?> refreshToken(HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<LoginResponseDto>> refreshToken(
+            HttpServletRequest request,
+            HttpServletResponse response) {
 
         try {
-            // 1 Lire le refresh token depuis le cookie
+            // 1. Lire le refresh token depuis le cookie
             String refreshTokenValue = getRefreshTokenFromCookie(request);
 
             if (refreshTokenValue == null || refreshTokenValue.isEmpty()) {
                 log.warn("No refresh token found in cookie");
-                return ResponseEntity
-                        .status(HttpStatus.UNAUTHORIZED)
-                        .body(ErrorResponseDto.unauthorized(
-                                ErrorCodes.UNAUTHORIZED,
-                                "No refresh token provided",
-                                request.getServletPath()
-                        ));
+
+                String errorMessage = messageService.getMessage("api.error.auth.refresh.missing");
+
+                ApiResponse<LoginResponseDto> errorResponse = ApiResponse.<LoginResponseDto>unauthorized(
+                        ErrorCodes.AUTHENTICATION_REQUIRED,
+                        errorMessage,
+                        request.getServletPath()
+                );
+
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
             }
 
-            // 2 Extraire IP et User-Agent
+            // 2. Extraire IP et User-Agent
             String ipAddress = getClientIpAddress(request);
             String userAgent = request.getHeader("User-Agent");
 
             log.info("Refresh token request from IP: {}", ipAddress);
 
-            // 3 Vérifier le refresh token sans le renouveler encore
+            // 3. Vérifier le refresh token sans le renouveler encore
             RefreshToken refreshToken = refreshTokenService.verifyRefreshToken(refreshTokenValue);
 
-            // 4 SÉCURITÉ: Détection de replay attack
+            // 4. SÉCURITÉ: Détection de replay attack
             if (refreshToken.isRevoked()) {
                 handleReplayAttack(refreshToken, ipAddress, userAgent);
                 deleteCookie(response);
-                return ResponseEntity
-                        .status(HttpStatus.UNAUTHORIZED)
-                        .body(ErrorResponseDto.unauthorized(
-                                ErrorCodes.UNAUTHORIZED,
-                                "Security alert: Token has been revoked",
-                                request.getServletPath()
-                        ));
+
+                String errorMessage = messageService.getMessage("api.error.auth.replay.attack");
+
+                ApiResponse<LoginResponseDto> errorResponse = ApiResponse.<LoginResponseDto>unauthorized(
+                        ErrorCodes.AUTHENTICATION_FAILED,
+                        errorMessage,
+                        request.getServletPath()
+                );
+
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
             }
 
-            // 5 SÉCURITÉ: Vérification device/IP matching
+            // 5. SÉCURITÉ: Vérification device/IP matching
             if (!isDeviceMatching(refreshToken, ipAddress, userAgent)) {
                 log.warn("Device/IP mismatch for refresh token. Expected IP: {}, Got: {}",
                         refreshToken.getIpAddress(), ipAddress);
@@ -257,97 +307,108 @@ public class AuthController {
                 }
             }
 
-            // 6 Renouveler les tokens (appel au service)
+            // 6. Renouveler les tokens (appel au service)
             LoginResponseDto refreshResponse = refreshTokenService.refreshAccessToken(
                     refreshTokenValue, ipAddress, userAgent);
 
-            // 7 Mettre à jour le cookie avec le nouveau refresh token
-            Cookie newRefreshTokenCookie = createRefreshTokenCookie(refreshResponse.refreshToken(),
+            // 7. Mettre à jour le cookie avec le nouveau refresh token
+            Cookie newRefreshTokenCookie = createRefreshTokenCookie(
+                    refreshResponse.refreshToken(),
                     refreshTokenExpirationMs
             );
-
             response.addCookie(newRefreshTokenCookie);
 
             log.info("Token refreshed successfully");
 
-            return ResponseEntity.ok(refreshResponse);
+            // Construire ApiResponse
+            String successMessage = messageService.getMessage("api.success.auth.refresh");
+
+            ApiResponse<LoginResponseDto> apiResponse = ApiResponse.success(successMessage, refreshResponse)
+                    .withPath("/api/v1/auth/refresh");
+
+            return ResponseEntity.ok(apiResponse);
 
         } catch (IllegalArgumentException e) {
             log.warn("Refresh failed - Invalid token: {}", e.getMessage());
             deleteCookie(response);
-            return ResponseEntity
-                    .status(HttpStatus.UNAUTHORIZED)
-                    .body(ErrorResponseDto.unauthorized(
-                            ErrorCodes.UNAUTHORIZED,
-                            "Invalid or expired refresh token",
-                            request.getServletPath()
-                    ));
+
+            String errorMessage = messageService.getMessage("api.error.auth.refresh.invalid");
+
+            ApiResponse<LoginResponseDto> errorResponse = ApiResponse.<LoginResponseDto>unauthorized(
+                    ErrorCodes.AUTHENTICATION_FAILED,
+                    errorMessage,
+                    request.getServletPath()
+            );
+
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
 
         } catch (Exception e) {
             log.error("Token refresh failed: {}", e.getMessage(), e);
             deleteCookie(response);
-            return ResponseEntity
-                    .status(HttpStatus.UNAUTHORIZED)
-                    .body(ErrorResponseDto.unauthorized(
-                            ErrorCodes.UNAUTHORIZED,
-                            "Token refresh failed: " + e.getMessage(),
-                            request.getServletPath()
-                    ));
+
+            String errorMessage = messageService.getMessage("api.error.internal");
+
+            ApiResponse<LoginResponseDto> errorResponse = ApiResponse.internalError(
+                    ErrorCodes.INTERNAL_ERROR,
+                    errorMessage,
+                    request.getServletPath()
+            );
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
 
     /**
-     * Handles requests that exceed the rate limit for the refresh endpoint.
-     * Logs the IP address of the client making the request and returns a response
-     * indicating that too many attempts have been made.
+     * Fallback pour le rate limiting sur /refresh.
+     * Déclenché quand le nombre de tentatives dépasse la limite configurée
+     * (par défaut 10 requêtes par minute).
      *
-     * @param request the HttpServletRequest associated with the client's request
-     * @param response the HttpServletResponse to provide the HTTP response
-     * @param e the exception triggered by exceeding the rate limit
-     * @return a ResponseEntity containing the error details and HTTP status code 429 (Too Many Requests)
+     * @param request Requête HTTP
+     * @param response Réponse HTTP
+     * @param e Exception du rate limiter
+     * @return ApiResponse avec code 429 Too Many Requests
      */
-    public ResponseEntity<?> refreshRateLimitFallback(HttpServletRequest request, HttpServletResponse response,
-                                                      Exception e) {
+    public ResponseEntity<ApiResponse<LoginResponseDto>> refreshRateLimitFallback(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Exception e) {
 
         String ipAddress = getClientIpAddress(request);
         log.warn("Rate limit exceeded for refresh endpoint from IP: {}", ipAddress);
 
-        return ResponseEntity
-                .status(HttpStatus.TOO_MANY_REQUESTS)
-                .body(ErrorResponseDto.of(
-                        HttpStatus.TOO_MANY_REQUESTS,
-                        ErrorCodes.UNAUTHORIZED,
-                        "Too many refresh attempts. Please try again later.",
-                        request.getServletPath()
-                ));
+        String errorMessage = messageService.getMessage("api.error.rate.limit.exceeded");
+
+        ApiResponse<LoginResponseDto> errorResponse = ApiResponse.<LoginResponseDto>builder()
+                .success(false)
+                .message(errorMessage)
+                .statusCode(HttpStatus.TOO_MANY_REQUESTS.value())
+                .path(request.getServletPath())
+                .errorCode(ErrorCodes.BUSINESS_RULE_VIOLATION)
+                .build();
+
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(errorResponse);
     }
 
-    /**
-     * Logs out the user by revoking the refresh token and removing the associated cookie.
-     *
-     * @param request  the HTTP servlet request containing the user's session and cookies
-     * @param response the HTTP servlet response to modify and delete the cookie
-     * @return a ResponseEntity containing a success response DTO indicating successful logout
-     */
+    // ENDPOINT : LOGOUT
     @PostMapping("/logout")
     @Operation(
             summary = "Déconnexion",
             description = "Révoque le refresh token et déconnecte l'utilisateur"
     )
     @ApiResponses(value = {
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "Déconnexion réussie",
                     content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(implementation = SuccessResponseDto.class)
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
                     )
             )
     })
-    public ResponseEntity<SuccessResponseDto> logout(
+    public ResponseEntity<ApiResponse<Void>> logout(
             HttpServletRequest request,
-            HttpServletResponse response
-    ) {
+            HttpServletResponse response) {
+
         try {
             log.debug("Logout attempt");
 
@@ -363,25 +424,29 @@ public class AuthController {
         } catch (Exception e) {
             log.error("Error during logout: {}", e.getMessage());
         } finally {
+            // Toujours supprimer le cookie, même en cas d'erreur
             deleteCookie(response);
         }
 
         log.info("User logged out successfully");
 
-        return ResponseEntity.ok(
-                SuccessResponseDto.success("Déconnexion réussie")
-        );
+        // Message localisé
+        String successMessage = messageService.getMessage("api.success.auth.logout");
+
+        ApiResponse<Void> apiResponse = ApiResponse.<Void>success(successMessage)
+                .withPath("/api/v1/auth/logout");
+
+        return ResponseEntity.ok(apiResponse);
     }
 
+    // ========================================================================
+    // MÉTHODES PRIVÉES - SÉCURITÉ
+    // ========================================================================
 
     /**
-     * Handles a replay attack by identifying and responding to a potential security breach.
-     * It will revoke all tokens associated with the user, log the incident,
-     * and notify the user via email about the possible account compromise.
-     *
-     * @param refreshToken The compromised refresh token that was reused.
-     * @param ipAddress The IP address from which the token reuse was detected.
-     * @param userAgent The User-Agent string from the client making the request.
+     * @param refreshToken Token compromis
+     * @param ipAddress IP de l'attaquant
+     * @param userAgent User-Agent de l'attaquant
      */
     private void handleReplayAttack(RefreshToken refreshToken, String ipAddress, String userAgent) {
         log.error("SECURITY ALERT: Replay attack detected! " +
@@ -415,13 +480,10 @@ public class AuthController {
     }
 
     /**
-     * Checks if the device that issued the refresh token matches the current device
-     * based on the IP address or similarity of the user agent.
-     *
-     * @param refreshToken the refresh token containing the device information (IP address and user agent)
-     * @param currentIp the current IP address to compare with the IP address from the refresh token
-     * @param currentUserAgent the current user agent string to compare with the user agent from the refresh token
-     * @return true if either the IP address matches or the user agents are determined to be similar, false otherwise
+     * @param refreshToken Token original
+     * @param currentIp IP actuelle
+     * @param currentUserAgent User-Agent actuel
+     * @return true si match, false sinon
      */
     private boolean isDeviceMatching(RefreshToken refreshToken, String currentIp, String currentUserAgent) {
         boolean ipMatches = refreshToken.getIpAddress() != null &&
@@ -436,11 +498,9 @@ public class AuthController {
     }
 
     /**
-     * Checks if two user agent strings represent similar browsers by comparing their extracted browser names.
-     *
-     * @param original the user agent string of the original browser; may be null
-     * @param current the user agent string of the current browser; may be null
-     * @return true if both user agent strings represent browsers with the same name, false otherwise
+     * @param original User-Agent original
+     * @param current User-Agent actuel
+     * @return true si même navigateur
      */
     private boolean areSimilarUserAgents(String original, String current) {
         if (original == null || current == null) {
@@ -454,11 +514,10 @@ public class AuthController {
     }
 
     /**
-     * Extracts the name of the browser from the provided user agent string.
+     * Extrait le nom du navigateur depuis le User-Agent.
      *
-     * @param userAgent the user agent string from which the browser name is to be extracted
-     * @return the name of the browser, such as "Chrome", "Firefox", "Safari", "Edge", "Opera",
-     *         or "Unknown" if the browser is not recognized
+     * @param userAgent User-Agent string
+     * @return Nom du navigateur (Chrome, Firefox, Safari, etc.)
      */
     private String extractBrowserName(String userAgent) {
         if (userAgent.contains("Chrome")) return "Chrome";
@@ -469,11 +528,13 @@ public class AuthController {
         return "Unknown";
     }
 
+
+    // MÉTHODES UTILITAIRES - COOKIES
     /**
-     * Retrieves the refresh token from the cookies in the given HTTP request.
+     * Récupère le refresh token depuis le cookie de la requête.
      *
-     * @param request the HttpServletRequest object containing the cookies
-     * @return the value of the refresh token if found; otherwise, null
+     * @param request Requête HTTP
+     * @return Valeur du refresh token ou null si absent
      */
     private String getRefreshTokenFromCookie(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
@@ -490,48 +551,42 @@ public class AuthController {
     }
 
     /**
-     * Creates a secure HTTP-only cookie containing the specified refresh token and expiration time.
-     *
-     * @param refreshToken the refresh token value to be stored in the cookie
-     * @param expirationMs the expiration time for the cookie in milliseconds
-     * @return a configured {@link Cookie} object containing the refresh token
+     * @param refreshToken Valeur du token
+     * @param expirationMs Durée de vie en millisecondes
+     * @return Cookie configuré
      */
     private Cookie createRefreshTokenCookie(String refreshToken, long expirationMs) {
         Cookie cookie = new Cookie("refreshToken", refreshToken);
         cookie.setPath("/");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setAttribute("SameSite", "Lax");
-        cookie.setMaxAge((int) (expirationMs / 1000));
+        cookie.setHttpOnly(true);  // Protection XSS
+        cookie.setSecure(true);    // HTTPS uniquement
+        cookie.setAttribute("SameSite", "Lax"); // Protection CSRF
+        cookie.setMaxAge((int) (expirationMs / 1000)); // Conversion ms → secondes
 
         return cookie;
     }
 
     /**
-     * Deletes the refresh token cookie by setting its value to null,
-     * setting its max age to 0, and adding it back to the HTTP response.
-     *
-     * @param response the HttpServletResponse object used to add the modified cookie
+     * Supprime le cookie refresh token.
+     * Utilisé lors du logout ou en cas d'erreur d'authentification.
+     * @param response Réponse HTTP
      */
     private void deleteCookie(HttpServletResponse response) {
         Cookie cookie = new Cookie("refreshToken", null);
         cookie.setPath("/");
         cookie.setHttpOnly(true);
         cookie.setSecure(true);
-        cookie.setMaxAge(0);
+        cookie.setMaxAge(0); // Expire immédiatement
         cookie.setAttribute("SameSite", "Lax");
         response.addCookie(cookie);
     }
 
+    // MÉTHODES UTILITAIRES - RÉSEAU
     /**
-     * Retrieves the client's IP address from the provided HTTP request. It first checks
-     * the "X-Forwarded-For" header for any forwarded IP addresses. If present, it extracts
-     * the first IP address from the list. If the "X-Forwarded-For" header is not set, it
-     * falls back to the "X-Real-IP" header. If neither header is available, it defaults to
-     * the remote address associated with the request.
+     * Récupère l'adresse IP réelle du client.
      *
-     * @param request the HttpServletRequest object containing client request information
-     * @return the client's IP address as a String
+     * @param request Requête HTTP
+     * @return Adresse IP du client
      */
     private String getClientIpAddress(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
@@ -546,15 +601,4 @@ public class AuthController {
 
         return request.getRemoteAddr();
     }
-
-    /**
-     * Retrieves a localized message based on the given message code and arguments.
-     *
-     * @param code the message code for the desired localized message
-     * @param args optional arguments to format the message
-     * @return the localized message string corresponding to the given code and arguments
-     */
-    private String getLocalizedMessage(String code, Object... args) {
-        return messageSource.getMessage(code, args, LocaleContextHolder.getLocale());
-    }
-}   
+}

@@ -1,87 +1,198 @@
 package com.store.store.controller;
 
-import com.store.store.dto.ContactInfoDto;
-import com.store.store.dto.ContactRequestDto;
-import com.store.store.dto.SuccessResponseDto;
+import com.store.store.dto.common.ApiResponse;
+import com.store.store.dto.contact.ContactInfoDto;
+import com.store.store.dto.contact.ContactRequestDto;
+import com.store.store.dto.contact.ContactResponseDto;
 import com.store.store.service.IContactService;
+
+import com.store.store.service.impl.MessageServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.MessageSource;
-
-import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
- * REST controller for managing contacts.
- * This controller provides endpoints for creating contact entries and retrieving contact information.
- * It interacts with the service layer to handle business logic.
  *
- *  @author Kardigué
- *  * @version 1.0
- *  * @since 2025-10-01
+ * @author Kardigué
+ * @version 2.0
+ * @since 2025-01-01
+ *
+ * @see IContactService
+ * @see ContactRequestDto
+ * @see ContactResponseDto
+ * @see ApiResponse
  */
 @RestController
 @RequestMapping("/api/v1/contacts")
 @RequiredArgsConstructor
+@Tag(name = "Contact", description = "API de gestion des messages de contact")
 public class ContactController {
 
     private final IContactService contactService;
     private final ContactInfoDto contactInfoDto;
-    private final MessageSource messageSource;
+    private final MessageServiceImpl messageService;
 
-    /**
-     * Saves a new contact entry based on the provided contact details.
-     * This method validates the input request body and invokes the service layer
-     * to persist the contact information.
-     *
-     * @param contactRequestDto the DTO containing contact details to be saved.
-     *                          It must be validated before processing.
-     * @return a response entity containing a success message and HTTP status code indicating
-     *         the creation of the new contact.
-     */
-    @Operation(summary = "Envoyer un message de contact")
+
+    // ENDPOINTS PUBLICS
+    @Operation(
+            summary = "Envoyer un message de contact",
+            description = "Permet aux visiteurs d'envoyer un message via le formulaire de contact. " +
+                    "Les champs sont validés automatiquement."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "201",
+                    description = "Message envoyé avec succès",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "Erreur de validation des données",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
+                    )
+            )
+    })
     @PostMapping
-    public ResponseEntity<SuccessResponseDto> saveContact(
+    public ResponseEntity<ApiResponse<Void>> saveContact(
             @Valid @RequestBody ContactRequestDto contactRequestDto) {
 
         contactService.saveContact(contactRequestDto);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(SuccessResponseDto.builder()
-                        //Retourne les infos de configuration dans properties
-                        .message(getLocalizedMessage("success.contact.created"))
-                        .status(HttpStatus.CREATED.value())
-                        .build());
+        // Message localisé via MessageService
+        String message = messageService.getMessage("api.success.contact.created");
+
+        ApiResponse<Void> response = ApiResponse.<Void>created(message, null).withPath("/api/v1/contacts");
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    /**
-     * Retrieves the contact information details such as phone number, email, and address.
-     * The information is provided from the application properties through the ContactInfoDto object.
-     *
-     * @return a ResponseEntity containing the contact information data, encapsulated
-     *         within a {@link ContactInfoDto} object and an HTTP 200 OK status.
-     */
-    @Operation(summary = "Obtenir les informations de contact")
-    @GetMapping()
+
+    @Operation(
+            summary = "Obtenir les informations de contact",
+            description = "Récupère les coordonnées de l'entreprise (téléphone, email, adresse) " +
+                    "configurées dans les propriétés de l'application."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Informations de contact récupérées",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ContactInfoDto.class)
+                    )
+            )
+    })
+    @GetMapping
     public ResponseEntity<ContactInfoDto> getContactInfo() {
-        return ResponseEntity.ok(contactInfoDto); // Retourne les infos de configuration
+        return ResponseEntity.ok(contactInfoDto);
     }
 
-    /**
-     * Retrieves a localized message based on the provided message code and arguments.
-     * This method resolves the message using the current locale held by the LocaleContextHolder.
-     *
-     * @param code the message code to look up, which acts as a key in the
-     *             message source to retrieve the corresponding message.
-     * @param args optional arguments to be substituted into the message placeholders,
-     *             if applicable.
-     * @return the localized message as a String, resolved using the specified code,
-     *         arguments, and the current locale.
-     */
-    private String getLocalizedMessage(String code, Object... args) {
-        return messageSource.getMessage(code, args, LocaleContextHolder.getLocale());
+    // ENDPOINTS ADMIN (Nécessitent ROLE_ADMIN)
+    @Operation(
+            summary = "Lister les messages de contact OPEN",
+            description = "Récupère tous les messages de contact non traités (statut OPEN). " +
+                    "Réservé aux administrateurs."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Liste des messages récupérée",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "Accès refusé - Rôle ADMIN requis",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
+                    )
+            )
+    })
+    @GetMapping("/messages")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<ContactResponseDto>>> getAllOpenMessages() {
+        List<ContactResponseDto> messages = contactService.getAllOpenMessages();
+
+        String message = messageService.getMessage("api.success.list.retrieved", "messages de contact");
+
+        ApiResponse<List<ContactResponseDto>> response = ApiResponse.success(message, messages)
+                .withPath("/api/v1/contacts/messages");
+
+        return ResponseEntity.ok(response);
+    }
+
+
+    @Operation(
+            summary = "Mettre à jour le statut d'un message",
+            description = "Change le statut d'un message de contact (OPEN → IN_PROGRESS → CLOSED). " +
+                    "Réservé aux administrateurs. La réouverture de messages fermés est interdite."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Statut mis à jour avec succès",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "Transition de statut invalide",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "Accès refusé - Rôle ADMIN requis",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "Message de contact non trouvé",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
+                    )
+            )
+    })
+    @PatchMapping("/{contactId}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> updateMessageStatus(
+            @PathVariable Long contactId,
+            @RequestParam String status) {
+
+        contactService.updateMessageStatus(contactId, status);
+
+        String message = messageService.getMessage("api.success.contact.status.updated");
+
+        ApiResponse<Void> response = ApiResponse.<Void>success(message)
+                .withPath("/api/v1/contacts/" + contactId + "/status");
+
+        return ResponseEntity.ok(response);
     }
 }
