@@ -1,51 +1,78 @@
 package com.store.store.controller;
 
-import com.store.store.dto.LoggingResponseDto;
+import com.store.store.dto.common.ApiResponse;
+import com.store.store.dto.auth.LoggingResponseDto;
+
+import com.store.store.service.impl.MessageServiceImpl;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * LoggingController provides a REST API endpoint for testing various logging levels.
- *
- * This controller demonstrates the usage of five logging levels (TRACE, DEBUG, INFO, WARN, and ERROR)
- * by logging messages with each level. It serves as an example for monitoring and debugging in an application.
- *
- * The endpoint responds with a JSON payload that includes a success message and status.
- *
- * Endpoint:
- * - HTTP Method: GET
- * - Path: /api/v1/logging
- *
  * @author Kardigué
- * @version 3.0
- * @since 2025-10-01
+ * @version 4.0 - Production Ready avec ApiResponse
+ * @since 2025-01-01
+ *
+ * @see org.slf4j.Logger
+ * @see ch.qos.logback.classic.Logger
  */
+@Tag(name = "Logging", description = "API de test des niveaux de logging")
 @RestController
 @RequestMapping("/api/v1/logging")
+@RequiredArgsConstructor
 @Slf4j
 public class LoggingController {
 
-    /**
-     * Tests various logging levels by generating log messages for TRACE, DEBUG, INFO, WARN, and ERROR.
-     *
-     * This method demonstrates the use of different log levels in an application and returns a structured JSON response
-     * indicating the result of the logging operation.
-     *
-     * @return ResponseEntity containing a LoggingResponseDto with a success message and status.
-     */
+    private final MessageServiceImpl messageService;
+
+    @Operation(
+            summary = "Tester les niveaux de logging",
+            description = "Génère des messages de log pour tous les niveaux (TRACE, DEBUG, INFO, WARN, ERROR) " +
+                    "afin de vérifier la configuration du système de logging"
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Test de logging effectué avec succès",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiResponse.class)
+                    )
+            )
+    })
     @GetMapping
-    public ResponseEntity<LoggingResponseDto> testLogging() {
+    public ResponseEntity<ApiResponse<LoggingResponseDto>> testLogging() {
+        log.info("GET /api/v1/logging - Starting logging test");
+
+        // GÉNÉRATION DES LOGS DE TEST
+
         log.trace("🔍 TRACE: This is a very detailed trace log. Used for tracking execution flow.");
         log.debug("🐞 DEBUG: This is a debug message. Used for debugging.");
         log.info("ℹ️ INFO: This is an informational message. Application events.");
         log.warn("⚠️ WARN: This is a warning! Something might go wrong.");
         log.error("🚨 ERROR: An error occurred! This needs immediate attention.");
 
-        // Retourne un objet JSON structuré
-        LoggingResponseDto response = new LoggingResponseDto("Logging tested successfully", "SUCCESS");
+        log.info("Logging test completed successfully");
+
+        // CONSTRUCTION DE LA RÉPONSE
+        // Données de réponse
+        LoggingResponseDto loggingData = new LoggingResponseDto("Logging tested successfully", "SUCCESS");
+
+        // Message de succès localisé
+        String successMessage = messageService.getMessage("api.success.logging.test.completed");
+
+        // Wrapper dans ApiResponse
+        ApiResponse<LoggingResponseDto> response = ApiResponse.success(successMessage, loggingData).withPath("/api/v1/logging");
+
         return ResponseEntity.ok(response);
     }
 }

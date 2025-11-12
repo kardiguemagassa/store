@@ -9,21 +9,6 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.concurrent.Executor;
 
 /**
- * Configuration class for enabling and customizing asynchronous processing.
- *
- * This class utilizes Spring's {@code @EnableAsync} annotation to activate support for
- * {@code @Async} throughout the application. The asynchronous tasks are executed using a
- * custom-configured thread pool executor.
- *
- * Key Characteristics of the Configuration:
- * - Core Pool Size: A minimum of 2 threads are active at all times.
- * - Maximum Pool Size: Up to 5 threads can be created during high load.
- * - Queue Capacity: A total of 100 tasks can wait in line if all threads are occupied.
- *
- * The thread executor is optimized for handling tasks such as sending emails with
- * efficient resource usage and queue management. Additionally, the threads are prefixed
- * with "AsyncEmail-" for better debug logging and traceability.
- *
  * @author Kardigué
  * @version 1.0
  * @since 2025-10-01
@@ -34,20 +19,22 @@ import java.util.concurrent.Executor;
 public class AsyncConfiguration implements AsyncConfigurer {
 
     /**
-     * Provides a customized {@link Executor} implementation for asynchronous processing.
-     *
-     * The executor is configured with specific parameters for efficient handling of
-     * concurrent tasks:
-     * - Core pool size is set to 2, ensuring a minimum of 2 threads are always active.
-     * - Maximum pool size is set to 5, allowing up to 5 threads to handle tasks during high load.
-     * - Queue capacity is set to 100, enabling the executor to hold up to 100 tasks in the queue if all threads are busy.
-     * - Thread names are prefixed with "AsyncEmail-" for better debugging and identification in log outputs.
-     *
-     * The executor is ideal for managing tasks like email sending or background data processing
-     * in the application.
-     *
-     * @return a fully configured {@link ThreadPoolTaskExecutor} instance for asynchronous task execution
-     */
+     * Fournit une implémentation personnalisée de {@link Executor} pour le traitement asynchrone.
+     * L'exécuteur est configuré avec des paramètres spécifiques pour une gestion efficace des
+     * tâches simultanées:
+     * La taille du pool de cœurs est fixée à 2, garantissant qu'au moins 2 threads sont toujours actifs.
+     * La taille maximale du pool est fixée à 5, permettant à un maximum de 5 threads de gérer les tâches en cas de forte charge.
+     * La capacité de la file d'attente est fixée à 100,
+     * permettant à l'exécuteur de contenir jusqu'à 100 tâches dans la file d'attente si tous les threads sont occupés.
+     * Les noms des threads sont préfixés par «AsyncEmail-» pour faciliter le débogage et l'identification dans les journaux.
+     * L'exécuteur est idéal pour gérer des tâches telles que l'envoi d'e-mails ou le traitement de données en arrière-plan
+     * dans l'application.
+     * @return une instance de {@link ThreadPoolTaskExecutor} entièrement configurée pour l'exécution de tâches asynchrones
+     * Envoyer des commentaires
+     * Panneaux latéraux
+     * Historique
+     * Enregistrées
+     **/
     @Override
     public Executor getAsyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

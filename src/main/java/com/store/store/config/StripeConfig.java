@@ -25,23 +25,6 @@ public class StripeConfig {
     private final StripeProperties stripeProperties;
 
     /**
-     * Initializes the Stripe SDK upon application startup.
-     *
-     * This method is annotated with `@PostConstruct` to indicate that it should run
-     * after the dependency injection is done and before the application is fully running.
-     * It performs the following operations:
-     *
-     * 1. Logs the initialization process.
-     * 2. Validates that the Stripe configuration properties are set correctly by
-     *    calling `stripeProperties.isConfigured()`. If the configuration is invalid,
-     *    an `IllegalStateException` is thrown.
-     * 3. Calls the `initializeStripe` method to set up the Stripe SDK with the appropriate
-     *    API key, timeout settings, retry configurations, and operational mode (test/live).
-     *
-     * If the Stripe configuration is invalid, an error message is logged, and
-     * the application terminates with an exception.
-     *
-     * This ensures that the Stripe SDK is properly set up before handling any API calls.
      *
      * @throws IllegalStateException if the Stripe SDK configuration is invalid.
      */
@@ -65,26 +48,22 @@ public class StripeConfig {
     }
 
     /**
-     * Configures the Stripe SDK with the appropriate initialization parameters.
-     *
-     * This method is responsible for setting up the Stripe SDK using configurations
-     * provided by the `stripeProperties` object. The following actions are performed:
-     *
-     * 1. Sets the Stripe API key from the `stripeProperties`.
-     * 2. Configures connection and read timeouts based on the `timeoutSeconds` value
-     *    in `stripeProperties`. The timeout is applied only if the value is non-null.
-     * 3. Configures the maximum number of network retries based on the `maxRetries`
-     *    value in `stripeProperties`. This is applied only if the value is non-null.
-     * 4. Logs the current operational mode of Stripe (TEST or LIVE) based on the
-     *    `isTestMode` method in `stripeProperties`. If in LIVE mode, a warning
-     *    message is logged to indicate that live transactions are enabled.
-     *
-     * It ensures that Stripe is properly configured before making any transaction
-     * requests. The method also logs relevant configuration details for debugging
-     * and operational monitoring.
-     *
-     * Note: This method is intended to be called during the application initialization
-     * process, typically as part of a setup or configuration workflow.
+     * Configure le SDK Stripe avec les paramètres d'initialisation appropriés.
+     * Cette méthode configure le SDK Stripe à l'aide des paramètres
+     * fournis par l'objet `stripeProperties`. Les actions suivantes sont effectuées :
+     * 1. Définit la clé API Stripe à partir de `stripeProperties`.
+     * 2. Configure les délais d'expiration de connexion et de lecture en fonction de la valeur de `timeoutSeconds`
+     * dans `stripeProperties`. Le délai d'expiration est appliqué uniquement si la valeur n'est pas nulle.
+     * 3. Configure le nombre maximal de tentatives de connexion réseau en fonction de la valeur de `maxRetries`
+     * dans `stripeProperties`. Ceci est appliqué uniquement si la valeur n'est pas nulle.
+     * 4. Consigne le mode de fonctionnement actuel de Stripe (TEST ou LIVE) en fonction de la méthode
+     * `isTestMode` dans `stripeProperties`. En mode LIVE, un avertissement
+     * est consigné pour indiquer que les transactions en direct sont activées.
+     * Cela garantit que Stripe est correctement configuré avant toute transaction
+     * requête. La méthode consigne également les détails de configuration pertinents pour le débogage
+     * et la surveillance opérationnelle.
+     * Remarque : Cette méthode est conçue pour être appelée lors de l'initialisation de l'application
+     *, généralement dans le cadre d'un processus d'installation ou de configuration.
      */
     private void initializeStripe() {
         // Définir la clé API
@@ -114,33 +93,28 @@ public class StripeConfig {
     }
 
     /**
-     * Checks whether the Stripe configuration is set up correctly.
-     *
-     * This method verifies if the required properties for the Stripe configuration,
-     * such as the API key, have been properly initialized and are valid.
-     *
-     * @return true if the Stripe configuration is valid and ready for use, false otherwise.
+     * Vérifie si la configuration Stripe est correcte.
+     * Cette méthode vérifie si les propriétés requises pour la configuration Stripe,
+     * telles que la clé API, ont été correctement initialisées et sont valides.
+     * @return true si la configuration Stripe est valide et prête à l'emploi, false sinon.
      */
     public boolean isConfigured() {
         return stripeProperties.isConfigured();
     }
 
     /**
-     * Determines whether the application is running in test mode for Stripe configuration.
-     *
-     * This method retrieves the test mode status from the Stripe properties,
-     * allowing the application to differentiate between test and live environments.
-     *
-     * @return true if the application is currently set to test mode, false otherwise.
+     * Détermine si l'application est exécutée en mode test pour la configuration Stripe.
+     * Cette méthode récupère le statut du mode test à partir des propriétés Stripe
+     * permettant à l'application de différencier les environnements de test et de production.
+     * @return true si l'application est actuellement en mode test, false sinon.
      */
     public boolean isTestMode() {
         return stripeProperties.isTestMode();
     }
 
     /**
-     * Retrieves the StripeProperties object associated with the current configuration.
-     *
-     * @return the StripeProperties object containing configuration details for Stripe.
+     * Récupère l'objet StripeProperties associé à la configuration actuelle.
+     * @return l'objet StripeProperties contenant les détails de configuration de Stripe.
      */
     public StripeProperties getProperties() {
         return stripeProperties;

@@ -6,25 +6,26 @@ import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 /**
- * Configuration class for enabling JPA auditing and providing necessary
- * beans for auditing functionality.
+ * Classe de configuration permettant d'activer l'audit JPA et de fournir les beans nécessaires
+ * à la fonctionnalité d'audit.
+ * Cette classe utilise l'annotation `@EnableJpaAuditing` pour activer les fonctionnalités d'audit
+ * de Spring Data JPA. Elle inclut une implémentation personnalisée de l'interface
+ * `AuditorAware` qui détermine l'auditeur actuel pour l'attribution des métadonnées d'audit aux entités persistantes.
  *
- * This class uses the `@EnableJpaAuditing` annotation to enable the auditing
- * features of Spring Data JPA. It includes a custom implementation of the
- * `AuditorAware` interface that determines the current auditor for assigning
- * audit-related metadata in persistable entities.
+ * @author Kardigué
+ * @version 1.0
+ * @since 2025-10-01
  */
 @Configuration
 @EnableJpaAuditing(auditorAwareRef = "auditorProvider")
 public class JpaConfig {
 
     /**
-     * Provides a Spring bean for the `AuditorAware` interface to determine the current auditor
-     * for JPA auditing purposes. This bean is used by the auditing configuration to automatically
-     * assign auditing metadata, such as createdBy and lastModifiedBy, during entity persistence.
-     *
-     * @return an implementation of `AuditorAware` that determines the current auditor, primarily
-     *         based on the security context. Defaults to the system user when no auditor can be determined.
+     * Fourni un bean Spring pour l'interface `AuditorAware` afin de déterminer l'auditeur actuel
+     * à des fins d'audit JPA. Ce bean est utilisé par la configuration d'audit pour attribuer automatiquement
+     * des métadonnées d'audit, telles que createBy et lastModifiedBy, lors de la persistance des entités.
+     * @return une implémentation de `AuditorAware` qui détermine l'auditeur actuel, principalement
+     * en fonction du contexte de sécurité. Par défaut, l'utilisateur système est utilisé si aucun auditeur ne peut être déterminé.
      */
     @Bean
     public AuditorAware<String> auditorProvider() {

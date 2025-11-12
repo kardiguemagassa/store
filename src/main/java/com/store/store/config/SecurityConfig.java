@@ -1,5 +1,6 @@
 package com.store.store.config;
 
+import com.store.store.dto.common.ApiResponse;
 import com.store.store.security.CustomerUserDetailsService;
 import com.store.store.security.JwtAuthenticationEntryPoint;
 import com.store.store.security.JwtAuthenticationFilter;
@@ -17,7 +18,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -33,104 +33,159 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * The SecurityConfig class configures security settings for the application.
- * It enables Web security, method security, and sets up various components such as authentication,
- * authorization, CORS, CSRF protection, session management, and security filters.
- *
- * This configuration includes:
- * - Custom authentication and authorization settings.
- * - JWT token-based stateless authentication.
- * - Support for method-level security annotations (e.g., @Secured, @RolesAllowed).
- * - CORS configurations for handling cross-origin requests.
- * - CSRF protection using cookies.
- * - Customized exception handling mechanisms.
+ * Gestion des erreurs
+ * 401 Unauthorized → {@link JwtAuthenticationEntryPoint}
+ * 403 Forbidden → {@link com.store.store.exception.GlobalExceptionHandler}
  *
  * @author Kardigué
- * @version 3.0 - Production Ready
- * @since 2025-10-27
+ * @version 4.0 - Production Ready avec ApiResponse
+ * @since 2025-01-01
+ *
+ * @see JwtAuthenticationFilter
+ * @see JwtAuthenticationEntryPoint
+ * @see CustomerUserDetailsService
  */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(
-        securedEnabled = true,      // @Secured
-        jsr250Enabled = true,       // @RolesAllowed
-        prePostEnabled = true       // @PreAuthorize / @PostAuthorize
+        securedEnabled = true,      // Active @Secured
+        jsr250Enabled = true,       // Active @RolesAllowed
+        prePostEnabled = true       // Active @PreAuthorize / @PostAuthorize
 )
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    /**
+     * Service de chargement des détails utilisateur depuis la BDD.
+     * <p>Utilisé par le {@link DaoAuthenticationProvider} pour récupérer
+     * les informations d'un utilisateur lors de l'authentification.
+     */
     private final CustomerUserDetailsService customerUserDetailsService;
+
+    /**
+     * Filtre JWT qui intercepte chaque requête HTTP.
+     * Responsabilités :
+     * Extraire le token JWT depuis le cookie "accessToken"
+     * Valider le token (signature, expiration, etc.)
+     * Authentifier l'utilisateur dans le SecurityContext
+     * Positionné AVANT {@link UsernamePasswordAuthenticationFilter}dans la chaîne de filtres.
+     */
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    /**
+     * Point d'entrée pour gérer les erreurs d'authentification (401).
+     * Déclenché automatiquement par Spring Security quand :
+     * Aucun token JWT n'est présent
+     * Le token JWT est expiré
+     * Le token JWT est invalide
+     * Retourne une réponse JSON standardisée {@link ApiResponse}
+     * avec message localisé via {@link com.store.store.service.impl.MessageServiceImpl}.
+     *
+     * @see com.store.store.security.JwtAuthenticationEntryPoint#commence
+     */
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+
+    /**
+     * Liste des chemins d'endpoints publics (sans authentification requise).
+     * Injectée depuis {@link PublicPathsConfig} qui centralise
+     * tous les endpoints publics de l'application.
+     * Exemples : /api/v1/auth/**, /api/v1/products/**, /api/v1/contacts
+     */
     private final List<String> publicPaths;
 
+    /**
+     * Origines CORS autorisées (depuis application.yml).
+     * Exemple de configuration :
+     * store:
+     *   cors:
+     *     allowed-origins: http://localhost:3000,http://localhost:4200
+     * AMAIS utiliser "*" avec credentials:true !
+     */
     @Value("${store.cors.allowed-origins}")
     private String allowedOrigins;
 
     /**
-     * Configures the security filter chain for the application.
-     * This method sets up CSRF protection with cookies, CORS configuration, stateless session management,
-     * exception handling, authentication providers, authorization rules, and disables form login and HTTP basic authentication.
+     * Configure la chaîne de filtres de sécurité Spring Security.
+     * @param http Configuration de sécurité HTTP
+     * @return Chaîne de filtres configurée
+     * @throws Exception Si erreur de configuration
      *
-     * @param http the {@link HttpSecurity} object used to configure the security settings
-     * @return the configured {@link SecurityFilterChain} for the application
-     * @throws Exception if an error occurs during the configuration of the security filter chain
+     * @see JwtAuthenticationFilter
+     * @see JwtAuthenticationEntryPoint
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-        // Configuration CSRF avec Cookies
+        // CSRF PROTECTION - Activé avec Cookies
         CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
         requestHandler.setCsrfRequestAttributeName("_csrf");
 
         http
-                // CSRF - ACTIVÉ avec Cookies
                 .csrf(csrf -> csrf
-                        // Cookie CSRF (accessible au JavaScript pour l'envoyer)
+                        // Token CSRF dans un cookie (accessible au JavaScript)
+                        // HttpOnly=false car le frontend doit lire le token pour l'envoyer
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(requestHandler)
-                        // Ignorer CSRF pour les endpoints publics
+                        // Pas de CSRF pour les endpoints publics (GET sans modification d'état)
                         .ignoringRequestMatchers(publicPaths.toArray(new String[0]))
                 )
 
-                // CORS
+                // CORS - Cross-Origin Resource Sharing
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // SESSION - STATELESS (malgré les cookies)
+                // SESSION MANAGEMENT - Stateless
+                // Pas de session côté serveur, l'état est dans le JWT
+                // Les cookies sont juste un moyen de transport sécurisé
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // EXCEPTION HANDLING
+                // EXCEPTION HANDLING - Délégation
+                // JwtAuthenticationEntryPoint gère automatiquement les erreurs 401
+                // Il utilise ApiResponse + MessageService pour retourner JSON localisé
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint))
 
-                // AUTHORIZATION
+                // AUTHORIZATION RULES - Règles par endpoint
                 .authorizeHttpRequests(auth -> auth
+                        // Endpoints publics (sans authentification)
                         .requestMatchers(publicPaths.toArray(new String[0])).permitAll()
+
+                        // Endpoints admin (ROLE_ADMIN requis)
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        //.requestMatchers("/store/actuator/**").hasRole("OPS_ENG")
+
+                        // Actuator (monitoring) - ROLE_ADMIN requis
                         .requestMatchers("/store/actuator/**").hasRole("ADMIN")
-                        //http://localhost:8080/swagger-ui/index.html#/
+
+                        // Swagger UI - Public (développement)
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**")
                         .permitAll()
+
+                        // Tous les autres endpoints - Authentification requise
                         .anyRequest().hasAnyRole("USER", "ADMIN"))
 
-                // FILTRES
+                // AUTHENTICATION PROVIDER & FILTERS
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
-                // DÉSACTIVER Form Login et HTTP Basic
+                // DISABLE UNUSED FEATURES
+                // Pas de formulaire de login HTML
                 .formLogin(AbstractHttpConfigurer::disable)
+                // Pas d'authentification HTTP Basic
                 .httpBasic(AbstractHttpConfigurer::disable);
 
         return http.build();
     }
 
     /**
-     * Configures and provides an AuthenticationProvider bean.
-     * The configured provider uses a custom UserDetailsService and a BCrypt password encoder.
-     *
-     * @return an instance of {@link AuthenticationProvider} that handles user authentication logic
+     *  Fournisseur d'authentification utilisant la base de données.
+     *  {@link CustomerUserDetailsService} : Charge l'utilisateur depuis la BDD
+     *  {@link BCryptPasswordEncoder} : Vérifie le mot de passe hashé
+     *  Processus d'authentification
+     *  UserDetailsService charge l'utilisateur par email
+     *  PasswordEncoder compare le password fourni avec le hash en BDD
+     *  Si match → Authentification réussie
+     *  Sinon → BadCredentialsException (401)
+     * @return Provider d'authentification configuré
      */
     @Bean
     public AuthenticationProvider authenticationProvider() {
@@ -141,12 +196,14 @@ public class SecurityConfig {
     }
 
     /**
-     * Creates and provides an {@link AuthenticationManager} bean.
-     * This method retrieves the {@link AuthenticationManager} from the provided {@link AuthenticationConfiguration}.
+     * Gestionnaire d'authentification principal.
      *
-     * @param config the {@link AuthenticationConfiguration} containing the authentication setup and manager
-     * @return an instance of {@link AuthenticationManager} for handling authentication processes
-     * @throws Exception if an error occurs during the retrieval of the {@link AuthenticationManager}
+     * <p>Utilisé dans {@link com.store.store.service.impl.AuthServiceImpl}
+     * pour authentifier l'utilisateur lors du login.
+     *
+     * @param config Configuration d'authentification Spring
+     * @return Manager d'authentification
+     * @throws Exception Si erreur de configuration
      */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
@@ -154,12 +211,10 @@ public class SecurityConfig {
     }
 
     /**
-     * Provides an instance of {@link CompromisedPasswordChecker}.
-     * This bean implements a password checking mechanism that integrates
-     * with the "Have I Been Pwned" API to determine whether a given password
-     * has been compromised in known data breaches.
-     *
-     * @return an instance of {@link CompromisedPasswordChecker} for verifying compromised passwords
+     * Vérificateur de mots de passe compromis.
+     * Utilise l'API "Have I Been Pwned" pour vérifier si un mot de passe a été exposé dans des fuites de données connues.
+     * @return Vérificateur de mots de passe compromis
+     * @see <a href="https://haveibeenpwned.com/API/v3">Have I Been Pwned API</a>
      */
     @Bean
     public CompromisedPasswordChecker compromisedPasswordChecker() {
@@ -167,10 +222,9 @@ public class SecurityConfig {
     }
 
     /**
-     * Creates and provides a PasswordEncoder bean.
-     * This bean sets up a BCryptPasswordEncoder with a specified strength for encoding passwords.
-     *
-     * @return an instance of {@link PasswordEncoder} configured with BCrypt hashing
+     * Encodeur de mots de passe BCrypt.
+     * Strength : 12 (bon compromis sécurité/performance)
+     * @return Encodeur de mots de passe
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -178,11 +232,14 @@ public class SecurityConfig {
     }
 
     /**
-     * Configures the Cross-Origin Resource Sharing (CORS) settings for the application.
-     * This method sets up allowed origins, HTTP methods, request headers, response headers,
-     * credentials, and pre-flight request caching duration for handling cross-origin requests.
+     * Configuration CORS pour autoriser les requêtes cross-origin.
+     * Le navigateur envoie automatiquement une requête OPTIONS avant
+     * chaque requête cross-origin pour vérifier les autorisations.
+     * Le cache de 3600s évite de répéter cette requête.
      *
-     * @return an instance of {@link CorsConfigurationSource} with the configured CORS settings
+     * @return Source de configuration CORS
+     *
+     * @see <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS">MDN CORS</a>
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -191,7 +248,7 @@ public class SecurityConfig {
         // ORIGINES - Spécifiques (jamais "*" avec credentials)
         config.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
 
-        // METHODS HTTP
+        // MÉTHODES HTTP
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
         // HEADERS AUTORISÉS (Requête Frontend → Backend)
@@ -213,12 +270,12 @@ public class SecurityConfig {
                 "Set-Cookie"              // Cookies (refresh token)
         ));
 
-
         // CREDENTIALS - TRUE pour Cookies
-        // IMPORTANT: Permet l'envoi/réception de cookies
+        // IMPORTANT : Permet l'envoi/réception de cookies (JWT, CSRF)
         config.setAllowCredentials(true);
 
-        // MAX AGE - Cache Preflight // Cache preflight 1 heure (économise les requêtes OPTIONS)
+        // MAX AGE - Cache Preflight
+        // Cache la réponse OPTIONS pendant 1 heure (économise les requêtes)
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

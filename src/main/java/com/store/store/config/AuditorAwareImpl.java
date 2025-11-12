@@ -2,37 +2,29 @@ package com.store.store.config;
 
 import com.store.store.security.CustomerUserDetails;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Component;
-
 import java.security.Principal;
 import java.util.Optional;
 
 /**
- * Implementation of the {@link AuditorAware} interface for determining the
- * current auditor for auditing purposes.
- *
- * This class retrieves the current auditor's identity based on the security
- * context, evaluating different authentication states and falling back to
- * default values in case of errors or absence of authentication details.
- *
- * The following scenarios are handled to identify the current auditor:
- *
- * - If no authentication is available, the system user is used as the auditor.
- * - If the authentication is not valid or the authenticated user is anonymous,
- *   the system user is used as the auditor.
- * - If the authenticated principal is of type {@code CustomerUserDetails}, the
- *   email of the user is used as the auditor.
- * - If the principal is a plain string, the string value is used as the auditor.
- * - As a fallback, the name from the authentication object is used as the auditor.
- *
- * On failure or unexpected errors, the system user is returned by default as the auditor.
- *
- * @author Kardigué
+ * Implémentation de l'interface {@link AuditorAware} pour déterminer l'auditeur
+ * actuel à des fins d'audit.
+ * Cette classe récupère l'identité de l'auditeur actuel en fonction du contexte de sécurité,
+ * évaluant différents états d'authentification et utilisant les valeurs par défaut en cas d'erreur ou
+ * d'absence d'informations d'authentification.
+ * Les scénarios suivants sont gérés pour identifier l'auditeur actuel :
+ * Si aucune authentification n'est disponible, l'utilisateur système est utilisé comme auditeur.
+ * Si l'authentification n'est pas valide ou si l'utilisateur authentifié est anonyme,
+ * l'utilisateur système est utilisé comme auditeur.
+ * Si le principal authentifié est de type {@code CustomerUserDetails},
+ * l'adresse e-mail de l'utilisateur est utilisée comme auditeur.
+ * Si le principal est une chaîne de caractères, cette chaîne est utilisée comme auditeur.
+ * En dernier recours, le nom de l'objet d'authentification est utilisé comme auditeur.
+ * En cas d'échec ou d'erreur inattendue, l'utilisateur système est renvoyé par défaut comme auditeur.
+ * @auteur Kardigué
  * @version 1.0
  * @since 2025-10-01
  */

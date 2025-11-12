@@ -17,31 +17,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * The InitialAdminCreator class is a Spring component responsible for
- * creating an initial administrative user and associated roles during
- * application startup if they do not already exist.
- *
- * It implements the CommandLineRunner interface, allowing it to execute
- * custom logic once the Spring application context has been loaded.
- *
- * Features:
- * - Checks whether the application is running in "test" mode to disable initialization.
- * - Reads configuration to determine if the initialization process should run.
- * - Creates default roles (e.g., ROLE_USER, ROLE_ADMIN) if they do not exist.
- * - Creates an initial administrator account with predefined credentials
- *   and associations to roles if such an account does not already exist.
- * - Contains safeguards to prevent re-creation of existing entities.
- *
- * Dependency Injection:
- * - CustomerRepository: For CRUD operations on customer entities.
- * - RoleRepository: For managing roles.
- * - PasswordEncoder: To securely hash administrator passwords.
- * - Environment: For accessing application configuration properties.
- *
- * Logging:
- * - Utilizes logging to provide debug and informational statements.
- * - Logs errors during the initialization process without halting application startup.
- *
  * @author Kardigué
  * @version 1.0
  * @since 2025-10-01

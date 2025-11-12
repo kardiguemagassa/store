@@ -4,15 +4,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * Configuration class for enabling Spring's scheduling capabilities.
- *
- * This class is annotated with `@Configuration` to mark it as a source
- * of bean definitions, and `@EnableScheduling` to enable scheduling tasks
- * using annotations such as `@Scheduled` in the application.
- *
- * The configuration allows the application to define and execute periodic
- * or scheduled tasks efficiently.
- *
+ * Classe de configuration pour activer les fonctionnalités de planification de Spring.
+ * Cette classe est annotée avec `@Configuration` pour la désigner comme source
+ * de définitions de beans, et `@EnableScheduling` pour activer la planification des tâches
+ * à l'aide d'annotations telles que `@Scheduled` dans l'application.
+ * La configuration permet à l'application de définir et d'exécuter efficacement des tâches périodiques
+ * ou planifiées.
  * @author Kardigué
  * @version 1.0
  * @since 2025-01-27

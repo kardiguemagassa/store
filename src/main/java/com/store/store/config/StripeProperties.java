@@ -8,15 +8,6 @@ import org.springframework.stereotype.Component;
 import jakarta.validation.constraints.NotBlank;
 
 /**
- * Configuration properties class for managing Stripe integration settings.
- *
- * This class provides settings required for integrating with the Stripe API,
- * including API keys, webhook secrets, timeout configurations, and other properties.
- *
- * The properties are loaded and managed via Spring's `@ConfigurationProperties` mechanism
- * with a prefix of `stripe`. This allows external configuration through application properties
- * or environment variables.
- *
  * @author Kardigué
  * @version 1.1 - FIXED
  * @since 2025-10-27
@@ -28,81 +19,72 @@ import jakarta.validation.constraints.NotBlank;
 public class StripeProperties {
 
     /**
-     * Represents the secret API key for Stripe integration.
-     *
-     * This key is required for authenticating requests to the Stripe API. It must be
-     * provided and set via the `STRIPE_API_KEY` environment variable. The value
-     * cannot be blank or null.
-     *
-     * Validation is enforced to ensure the key is correctly configured before using
-     * it for any Stripe operations.
+     * Représente la clé API secrète pour l'intégration Stripe.
+     * Cette clé est requise pour authentifier les requêtes à l'API Stripe. Elle doit être
+     * fournie et définie via la variable d'environnement `STRIPE_API_KEY`. La valeur
+     * ne peut pas être vide ni nulle.
+     * Une validation est effectuée pour garantir que la clé est correctement configurée avant toute utilisation
+     * pour les opérations Stripe.
+
      */
     @NotBlank(message = "Stripe API Key is required. Set STRIPE_API_KEY environment variable.")
     private String apiKey;
 
     /**
-     * Represents the secret key used to validate incoming webhook requests from Stripe.
-     * This secret is provided by Stripe when setting up webhooks and is used to ensure
-     * that webhook payloads are authentic and originate from Stripe.
-     *
-     * It is recommended to keep this value securely stored and not expose it in logs
-     * or insecure locations. The validation of this value ensures the integrity and
-     * security of webhook events handled by the application.
+     * Représente la clé secrète utilisée pour valider les requêtes webhook entrantes de Stripe.
+     * Cette clé secrète est fournie par Stripe lors de la configuration des webhooks et sert à garantir
+     * que les données des webhooks sont authentiques et proviennent bien de Stripe.
+     * Il est recommandé de conserver cette valeur en lieu sûr et de ne pas l'exposer dans les journaux
+     * ni dans des emplacements non sécurisés. La validation de cette valeur garantit l'intégrité et
+     * la sécurité des événements webhook gérés par l'application.
      */
     private String webhookSecret;
 
     /**
-     * The publishable key for authenticating client-side Stripe API requests.
-     *
-     * This key is safe to use in public environments, such as web or mobile clients,
-     * and is used for operations like creating tokens or performing basic client-side
-     * interactions with the Stripe API.
+     * Clé publique permettant d'authentifier les requêtes API Stripe côté client.
+     * Cette clé peut être utilisée en toute sécurité dans des environnements publics, tels que les clients web ou mobiles,
+     * et sert à des opérations comme la création de jetons ou les interactions de base côté client
+     * avec l'API Stripe.
      */
     private String publishableKey;
 
     /**
-     * Represents the timeout duration, in seconds, for operations related to Stripe configuration
-     * or integration. This setting determines how long the application will wait for a response
-     * before timing out. It is commonly used in network or API calls.
-     *
-     * Default value: 30 seconds.
+     * Représente la durée du délai d'attente, en secondes, pour les opérations liées à la configuration de Stripe
+     * ou à son intégration. Ce paramètre détermine la durée pendant laquelle l'application attend une réponse
+     * avant d'expirer. Il est couramment utilisé pour les appels réseau ou API.
+     * Valeur par défaut : 30 secondes.
      */
     private Integer timeoutSeconds = 30;
 
     /**
-     * The maximum number of retry attempts to be made in case of a failure.
-     *
-     * This variable is used to define the upper limit for retrying operations
-     * that encounter non-critical errors, such as network timeouts or API rate limits.
-     * It plays a role in ensuring robust handling of transient issues while preventing
-     * indefinite retries, which could lead to unnecessary overhead.
-     *
-     * Default value: 3
+     * Nombre maximal de tentatives de nouvelle connexion en cas d'échec.
+     * Cette variable définit la limite supérieure des tentatives de nouvelle connexion pour les opérations
+     * rencontrant des erreurs non critiques, telles que des délais d'attente réseau ou des limitations de débit d'API.
+     * Elle contribue à garantir une gestion robuste des problèmes transitoires tout en évitant
+     * des tentatives infinies, susceptibles d'entraîner une surcharge inutile.
+     * Valeur par défaut : 3
+
      */
     private Integer maxRetries = 3;
 
     /**
-     * Indicates whether the application is running in test mode.
-     * When set to true, the Stripe integration operates in a sandbox
-     * environment, allowing for testing without real financial transactions.
+     * Indique si l'application est exécutée en mode test.
+     * Si la valeur est «true», l'intégration Stripe fonctionne dans un environnement de test (sandbox),
+     * permettant d'effectuer des tests sans transactions financières réelles.
      */
     private boolean testMode = true;
 
     /**
-     * Validates and logs the configuration for Stripe integration.
-     *
-     * This method performs the following tasks:
-     * - Validates the Stripe API Key to ensure it is properly configured and follows the correct format.
-     * - Validates the Webhook Secret, if provided, ensuring it adheres to expected format conventions.
-     * - Logs the Stripe configuration, including timeout settings, retry attempts, and other relevant details.
-     *
-     * Logs informative messages to indicate the success or warnings about the configuration.
-     *
-     * Throws:
-     * - IllegalStateException if the API Key is invalid or not configured.
-     *
-     * Note: This method is annotated with `@PostConstruct` to be executed
-     * automatically after the bean initialization phase in a Spring context.
+     * Valide et enregistre la configuration de l'intégration Stripe.
+     * Cette méthode effectue les tâches suivantes :
+     * Valide la clé API Stripe pour s'assurer qu'elle est correctement configurée et respecte le format attendu.
+     * Valide le secret du webhook, s'il est fourni, en s'assurant qu'il respecte les conventions de format attendues.
+     * Enregistre la configuration Stripe, y compris les paramètres de délai d'expiration, les tentatives de nouvelle connexion et autres détails pertinents.
+     * Enregistre des messages informatifs pour indiquer la réussite ou les avertissements concernant la configuration.
+     * Lève :
+     * Une exception IllegalStateException si la clé API est invalide ou non configurée.
+     * Remarque : Cette méthode est annotée avec `@PostConstruct` pour être exécutée
+     * automatiquement après la phase d'initialisation du bean dans un contexte Spring.
      */
     @PostConstruct
     public void validateAndLog() {
@@ -125,26 +107,20 @@ public class StripeProperties {
     }
 
     /**
-     * Validates the configuration of the Stripe API Key.
-     *
-     * This method ensures that the `apiKey` field is properly configured, non-empty,
-     * resolved, and adheres to expected format conventions for Stripe API keys.
-     *
-     * The validation process includes:
-     * 1. Checking if the API Key is null or empty.
-     *    - Logs error and throws an IllegalStateException if not configured.
-     * 2. Verifying that the API Key is not an unresolved placeholder.
-     *    - Logs error and throws an IllegalStateException if uninitialized.
-     * 3. Ensuring the API Key format starts with either `sk_test_` or `sk_live_`.
-     *    - Logs error and throws an IllegalStateException if the format is invalid.
-     *
-     * Additionally, this method determines the operational mode of the API Key
-     * (either Test or Live mode) and logs the masked API Key for debugging.
-     *
-     * Logs informative messages for successful validation or configuration issues.
-     *
-     * Throws:
-     * - IllegalStateException if the `apiKey` is invalid, missing, or not resolved.
+     * Valide la configuration de la clé API Stripe.
+     * Cette méthode vérifie que le champ `apiKey` est correctement configuré, non vide,
+     * résolu et respecte les conventions de format attendues pour les clés API Stripe.
+     * Le processus de validation comprend :
+     * 1. Vérification si la clé API est nulle ou vide.
+     * - Consigne l'erreur et lève une exception IllegalStateException si elle n'est pas configurée.
+     * 2. Vérification que la clé API n'est pas un espace réservé non résolu.
+     * - Consigne l'erreur et lève une exception IllegalStateException si elle n'est pas initialisée.
+     * 3. Vérification que le format de la clé API commence par `sk_test_` ou `sk_live_`.
+     * Consigne l'erreur et lève une exception IllegalStateException si le format est invalide.
+     * De plus, cette méthode détermine le mode de fonctionnement de la clé API
+     * (mode Test ou Production) et consigne la clé API masquée à des fins de débogage.
+     * Consigne les messages informatifs relatifs à la validation réussie ou aux problèmes de configuration.
+     * - IllegalStateException si la clé `apiKey` est invalide, manquante ou non résolue.
      */
     private void validateApiKey() {
         if (apiKey == null || apiKey.isEmpty()) {
@@ -183,16 +159,14 @@ public class StripeProperties {
     }
 
     /**
-     * Validates the format of the webhook secret used for Stripe integration.
-     *
-     * This method performs the following validation steps:
-     * - Checks that the `webhookSecret` starts with the required prefix `whsec_`.
-     *   - Logs a warning if the webhook secret does not follow this format,
-     *     indicating that webhook validation may not function as expected.
-     * - Logs an informational message if the webhook secret is correctly formatted.
-     *
-     * This validation ensures that the webhook secret conforms to Stripe's
-     * expected format, reducing potential issues during webhook signature verification.
+     * Valide le format du secret webhook utilisé pour l'intégration Stripe.
+     * Cette méthode effectue les étapes de validation suivantes :
+     * Vérifie que `webhookSecret` commence par le préfixe requis `whsec_`.
+     * Consigne un avertissement si le secret webhook ne respecte pas ce format,
+     * indiquant que la validation du webhook risque de ne pas fonctionner correctement.
+     * Consigne un message d'information si le secret webhook est correctement formaté.
+     * Cette validation garantit que le secret webhook est conforme au format attendu par Stripe,
+     * réduisant ainsi les problèmes potentiels lors de la vérification de la signature du webhook.
      */
     private void validateWebhookSecret() {
         if (!webhookSecret.startsWith("whsec_")) {
@@ -204,17 +178,15 @@ public class StripeProperties {
     }
 
     /**
-     * Logs the current Stripe integration configuration details for debugging and monitoring purposes.
-     *
-     * This method performs the following actions:
-     * - Logs the configured timeout duration for Stripe API requests.
-     * - Logs the maximum number of retry attempts for API calls.
-     * - Logs the publishable API key. If the key is configured, it is masked for security; otherwise,
-     *   a warning message is logged to indicate its absence.
-     * - Delegates the logging of relevant environment variables to an auxiliary method.
-     *
-     * The logged information helps diagnose configuration issues or validate the current setup
-     * of the Stripe integration.
+     * Enregistre les détails de la configuration actuelle de l'intégration Stripe à des fins de débogage et de surveillance.
+     * Cette méthode effectue les actions suivantes :
+     * Enregistre la durée du délai d'attente configuré pour les requêtes API Stripe.
+     * Enregistre le nombre maximal de tentatives de nouvelle connexion pour les appels API.
+     * Enregistre la clé API publique. Si la clé est configurée, elle est masquée pour des raisons de sécurité ; sinon,
+     * un message d'avertissement est enregistré pour indiquer son absence.
+     * Délègue l'enregistrement des variables d'environnement pertinentes à une méthode auxiliaire.
+     * Les informations enregistrées permettent de diagnostiquer les problèmes de configuration ou de valider la configuration actuelle
+     * de l'intégration Stripe.
      */
     private void logConfiguration() {
         log.info("⏱️  Timeout: {} seconds", timeoutSeconds);
@@ -245,12 +217,11 @@ public class StripeProperties {
     }
 
     /**
-     * Masks a given API key for security purposes, ensuring only a portion of the key is visible.
-     * The masked API key consists of the first 10 characters, followed by "..." and the last 4 characters.
-     * If the key is null or shorter than 14 characters, "INVALID_KEY" is returned.
-     *
-     * @param key the API key to be masked. Must not be null or shorter than 14 characters.
-     * @return the masked version of the API key if it's properly formatted, or "INVALID_KEY" otherwise.
+     * Masque une clé API donnée pour des raisons de sécurité, en ne laissant apparaître qu'une partie de la clé.
+     * La clé API masquée est composée des 10 premiers caractères, suivis de "..." et des 4 derniers caractères.
+     * Si la clé est nulle ou inférieure à 14 caractères, la fonction renvoie "INVALID_KEY".
+     * @param key la clé API à masquer. Ne doit pas être nulle ni inférieure à 14 caractères.
+     * @return la version masquée de la clé API si elle est correctement formatée, ou "INVALID_KEY" dans le cas contraire.
      */
     private String maskApiKey(String key) {
         if (key == null || key.length() < 14) {
@@ -259,18 +230,15 @@ public class StripeProperties {
         return key.substring(0, 10) + "..." + key.substring(key.length() - 4);
     }
 
-
     /**
-     * Checks whether the application is properly configured for Stripe integration.
-     *
-     * This method evaluates the `apiKey` to determine if it has been set correctly.
-     * A valid API Key must:
-     * - Not be null
-     * - Not be empty
-     * - Not be an unresolved placeholder starting with "${"
-     * - Start with either "sk_test_" or "sk_live_"
-     *
-     * @return true if the Stripe API Key is properly configured, false otherwise.
+     * Vérifie si l'application est correctement configurée pour l'intégration Stripe.
+     * Cette méthode évalue la clé API (`apiKey`) pour déterminer si elle a été correctement définie.
+     * Une clé API valide doit :
+     * Ne pas être nulle
+     * Ne pas être vide
+     * Ne pas être un espace réservé non résolu commençant par "${"
+     * Commencer par "sk_test_" ou "sk_live_"
+     * @return true si la clé API Stripe est correctement configurée, false sinon.
      */
     public boolean isConfigured() {
         return apiKey != null &&
