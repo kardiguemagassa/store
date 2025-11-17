@@ -1,29 +1,6 @@
 package com.store.store.service.impl;
 
-import com.store.store.dto.AddressDto;
-import com.store.store.dto.ProfileRequestDto;
-import com.store.store.dto.ProfileResponseDto;
-import com.store.store.entity.Address;
-import com.store.store.entity.Customer;
-import com.store.store.repository.CustomerRepository;
-import com.store.store.util.TestDataBuilder;
-import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 /*@ExtendWith(MockitoExtension.class)
 @Slf4j

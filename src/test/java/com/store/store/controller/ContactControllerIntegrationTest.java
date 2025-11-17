@@ -2,7 +2,7 @@ package com.store.store.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.store.store.constants.ApplicationConstants;
-import com.store.store.dto.ContactRequestDto;
+import com.store.store.dto.contact.ContactRequestDto;
 import com.store.store.entity.Contact;
 import com.store.store.repository.ContactRepository;
 import com.store.store.util.TestDataBuilder;

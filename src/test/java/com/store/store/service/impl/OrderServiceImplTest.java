@@ -1,8 +1,9 @@
 package com.store.store.service.impl;
 
 import com.store.store.constants.ApplicationConstants;
-import com.store.store.dto.OrderRequestDto;
-import com.store.store.dto.OrderResponseDto;
+import com.store.store.dto.order.OrderRequestDto;
+import com.store.store.dto.order.OrderResponseDto;
+import com.store.store.dto.order.OrderItemDto;
 import com.store.store.entity.Customer;
 import com.store.store.entity.Order;
 import com.store.store.entity.OrderItem;
@@ -20,7 +21,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -89,8 +89,8 @@ class OrderServiceImplTest {
                 "pi_test_123456",
                 "paid",
                 List.of(
-                        new com.store.store.dto.OrderItemDto(1L, 2, new BigDecimal("50.00")),
-                        new com.store.store.dto.OrderItemDto(2L, 1, new BigDecimal("75.00"))
+                        new OrderItemDto(1L, 2, new BigDecimal("50.00")),
+                        new OrderItemDto(2L, 1, new BigDecimal("75.00"))
                 )
         );
 

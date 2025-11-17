@@ -1,6 +1,6 @@
 /*package com.store.store.controller;
 
-import com.store.store.dto.RefreshTokenRequestDto;
+import com.store.store.dto.auth.RefreshTokenRequestDto;
 import com.store.store.entity.RefreshToken;
 import com.store.store.repository.RefreshTokenRepository;
 import org.junit.jupiter.api.Test;
