@@ -36,7 +36,7 @@ public class Role extends BaseEntity {
     @ManyToMany(mappedBy = "roles")
     private Set<Customer> customers = new LinkedHashSet<>();
 
-    // Méthodes utilitaires - COMPLÉTER
+    // Méthodes utilitaires
     public boolean isAdmin() {
         return name == RoleType.ROLE_ADMIN;
     }
@@ -45,11 +45,11 @@ public class Role extends BaseEntity {
         return name == RoleType.ROLE_USER;
     }
 
-    public boolean isManager() {  // AJOUTER
+    public boolean isManager() {
         return name == RoleType.ROLE_MANAGER;
     }
 
-    public boolean isEmployee() {  // AJOUTER
+    public boolean isEmployee() {
         return name == RoleType.ROLE_EMPLOYEE;
     }
 
