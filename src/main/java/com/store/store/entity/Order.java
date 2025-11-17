@@ -48,7 +48,6 @@ public class Order extends BaseEntity {
     @Column(name = "total_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalPrice;
 
-    // ✅ CHANGEMENT PRINCIPAL : payment_id → payment_intent_id
     @NotBlank(message = "L'ID du paiement Stripe est obligatoire")
     @Size(max = 250, message = "L'ID du paiement ne peut pas dépasser 250 caractères")
     @Column(name = "payment_intent_id", nullable = false, length = 250)
@@ -64,29 +63,18 @@ public class Order extends BaseEntity {
     @Column(name = "order_status", nullable = false, length = 50)
     private String orderStatus;
 
-    // =====================================================
     // MÉTHODES HELPER
-    // =====================================================
 
-    /**
-     * Ajoute un item à la commande (maintient la relation bidirectionnelle)
-     */
     public void addOrderItem(OrderItem item) {
         orderItems.add(item);
         item.setOrder(this);
     }
 
-    /**
-     * Retire un item de la commande
-     */
     public void removeOrderItem(OrderItem item) {
         orderItems.remove(item);
         item.setOrder(null);
     }
 
-    /**
-     * Calcule le total de la commande
-     */
     public BigDecimal calculateTotal() {
         return orderItems.stream()
                 .map(item -> item.getPrice().multiply(

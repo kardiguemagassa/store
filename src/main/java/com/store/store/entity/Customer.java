@@ -34,7 +34,7 @@ public class Customer extends BaseEntity {
 
     @Size(min = 7, max = 20, message = "Le numéro de téléphone doit contenir entre 7 et 20 caractères")
     @Pattern(
-            regexp = "^\\+?[0-9]{7,15}$",  // Plus flexible : + optionnel, puis 7-15 chiffres
+            regexp = "^\\+?[0-9]{7,15}$",  //  optionnel, puis 7-15 chiffres
             message = "Format de numéro de téléphone invalide"
     )
     @Column(name = "mobile_number", nullable = false, unique = true, length = 20)
@@ -57,8 +57,7 @@ public class Customer extends BaseEntity {
     private Set<Role> roles = new LinkedHashSet<>();
 
     public boolean hasRole(RoleType roleType) {
-        return roles.stream()
-                .anyMatch(role -> role.getName() == roleType);
+        return roles.stream().anyMatch(role -> role.getName() == roleType);
     }
 
     public boolean isAdmin() {
@@ -69,24 +68,21 @@ public class Customer extends BaseEntity {
         return hasRole(RoleType.ROLE_USER);
     }
 
-    public boolean isManager() {  // AJOUTER
+    public boolean isManager() {
         return hasRole(RoleType.ROLE_MANAGER);
     }
 
-    public boolean isEmployee() {  // AJOUTER
+    public boolean isEmployee() {
         return hasRole(RoleType.ROLE_EMPLOYEE);
     }
 
     public Set<String> getRoleNames() {
-        return roles.stream()
-                .map(role -> role.getName().name())
-                .collect(Collectors.toSet());
+        return roles.stream().map(role -> role.getName().name()).collect(Collectors.toSet());
     }
 
     // Méthode utile pour la hiérarchie
-    public boolean hasMinimumRole(RoleType minimumRole) {  // AJOUTER
-        return roles.stream()
-                .anyMatch(role -> role.getName().getLevel() >= minimumRole.getLevel());
+    public boolean hasMinimumRole(RoleType minimumRole) {
+        return roles.stream().anyMatch(role -> role.getName().getLevel() >= minimumRole.getLevel());
     }
 
 }

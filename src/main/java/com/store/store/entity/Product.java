@@ -8,10 +8,22 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Entité Product représentant un produit dans l'application e-commerce.
+ *
+ * @author Kardigué
+ * @version 2.0 - Ajout du champ SKU
+ * @since 2025-11-08
+ */
 @Getter
 @Setter
 @Entity
-@Table(name = "products")
+@Table(name = "products", indexes = {
+        @Index(name = "idx_sku", columnList = "sku", unique = true),
+        @Index(name = "idx_category_id", columnList = "category_id"),
+        @Index(name = "idx_is_active", columnList = "is_active"),
+        @Index(name = "idx_popularity", columnList = "popularity")
+})
 public class Product extends BaseEntity {
 
     @Id
@@ -29,7 +41,7 @@ public class Product extends BaseEntity {
     private BigDecimal price;
 
     @Column(name = "popularity", nullable = false)
-    private Integer popularity;
+    private Integer popularity = 0;
 
     @Column(name = "image_url", length = 500)
     private String imageUrl;
@@ -40,7 +52,17 @@ public class Product extends BaseEntity {
     @Column(name = "stock_quantity", nullable = false)
     private Integer stockQuantity = 0;
 
-    // Galerie d'images avec ordre d'affichage
+     //SKU (Stock Keeping Unit) Code unique d'identification du produit.Format recommandé: STK-{CATEGORY}-{NUMBER}
+     //Exemple: STK-SPORTS-001, STK-CODING-012
+    @Column(name = "sku", nullable = false, unique = true, length = 50)
+    private String sku;
+
+    /**
+     * Galerie d'images avec ordre d'affichage.
+     *
+     * Permet de stocker plusieurs images pour un produit
+     * avec un ordre d'affichage défini.
+     */
     @ElementCollection
     @CollectionTable(
             name = "product_gallery_images",
@@ -54,26 +76,24 @@ public class Product extends BaseEntity {
     @Column(name = "image_url", length = 500)
     private List<String> galleryImages = new ArrayList<>();
 
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
+    // HELPER METHODS - CATEGORY
 
-    // HELPER METHODS
     public String getCategoryName() {
         return category != null ? category.getName() : null;
     }
+
 
     public String getCategoryCode() {
         return category != null ? category.getCode() : null;
     }
 
-    /**
-     * Adds an image to the product's gallery.
-     * If the gallery has not been initialized, it initializes a new gallery list.
-     *
-     * @param imageUrl the URL of the image to be added to the product's gallery
-     */
+    // HELPER METHODS - GALLERY IMAGES
+
     public void addGalleryImage(String imageUrl) {
         if (this.galleryImages == null) {
             this.galleryImages = new ArrayList<>();
@@ -81,14 +101,6 @@ public class Product extends BaseEntity {
         this.galleryImages.add(imageUrl);
     }
 
-    /**
-     * Adds an image to the product's gallery at the specified position.
-     * If the gallery has not been initialized, it initializes a new gallery list.
-     * If the position is invalid (i.e., outside the bounds of the existing list), the image is added at the end of the list.
-     *
-     * @param imageUrl the URL of the image to be added to the product's gallery
-     * @param position the position at which the image should be inserted in the gallery
-     */
     public void addGalleryImage(String imageUrl, int position) {
         if (this.galleryImages == null) {
             this.galleryImages = new ArrayList<>();
@@ -100,13 +112,6 @@ public class Product extends BaseEntity {
         }
     }
 
-    /**
-     * Removes an image from the product's gallery based on the given URL.
-     * If the gallery is not initialized, the method returns false.
-     *
-     * @param imageUrl the URL of the image to be removed from the gallery
-     * @return true if the image was successfully removed, false otherwise
-     */
     public boolean removeGalleryImage(String imageUrl) {
         if (this.galleryImages != null) {
             return this.galleryImages.remove(imageUrl);
@@ -114,15 +119,6 @@ public class Product extends BaseEntity {
         return false;
     }
 
-    /**
-     * Removes an image from the product's gallery based on the specified position.
-     * If the gallery is not initialized or the position is invalid (i.e., out of bounds),
-     * the method returns null.
-     *
-     * @param position the position of the image to be removed from the gallery
-     * @return the URL of the removed image if successful, or null if the gallery
-     *         is uninitialized or the position is invalid
-     */
     public String removeGalleryImage(int position) {
         if (this.galleryImages != null && position >= 0 && position < this.galleryImages.size()) {
             return this.galleryImages.remove(position);
@@ -130,15 +126,6 @@ public class Product extends BaseEntity {
         return null;
     }
 
-    /**
-     * Moves an image within the product's gallery from one position to another.
-     * If the gallery is not initialized or if the specified positions are invalid,
-     * the method returns false.
-     *
-     * @param fromPosition the current position of the image in the gallery
-     * @param toPosition the new position to which the image should be moved
-     * @return true if the image was successfully moved, false otherwise
-     */
     public boolean moveGalleryImage(int fromPosition, int toPosition) {
         if (this.galleryImages == null ||
                 fromPosition < 0 || fromPosition >= this.galleryImages.size() ||
@@ -151,46 +138,74 @@ public class Product extends BaseEntity {
         return true;
     }
 
-    /**
-     * Clears all images from the product's gallery.
-     * If the gallery has not been initialized, the method does nothing.
-     */
     public void clearGalleryImages() {
         if (this.galleryImages != null) {
             this.galleryImages.clear();
         }
     }
 
-    /**
-     * Retrieves the count of images in the product's gallery.
-     * If the gallery is uninitialized, the method returns 0.
-     *
-     * @return the number of images in the gallery, or 0 if the gallery is not initialized
-     */
     public int getGalleryImagesCount() {
         return this.galleryImages != null ? this.galleryImages.size() : 0;
     }
 
-    /**
-     * Checks if the specified image URL exists in the product's gallery.
-     *
-     * @param imageUrl the URL of the image to check within the gallery
-     * @return true if the image URL is present in the gallery, false otherwise
-     */
     public boolean hasGalleryImage(String imageUrl) {
         return this.galleryImages != null && this.galleryImages.contains(imageUrl);
     }
 
-    /**
-     * Retrieves the first image URL from the product's gallery.
-     * If the gallery is not initialized or contains no images, the method returns null.
-     *
-     * @return the URL of the first image in the gallery, or null if the gallery is uninitialized or empty
-     */
     public String getFirstGalleryImage() {
         if (this.galleryImages != null && !this.galleryImages.isEmpty()) {
-            return this.galleryImages.get(0);
+            return this.galleryImages.getFirst();
         }
         return null;
+    }
+
+    // HELPER METHODS - SKU
+
+
+    public boolean hasValidSku() {
+        return this.sku != null && !this.sku.trim().isEmpty();
+    }
+
+    public String generateSku() {
+        if (this.id == null) {
+            throw new IllegalStateException("Cannot generate SKU: Product ID is null");
+        }
+
+        String categoryCode = getCategoryCode();
+        if (categoryCode == null) {
+            categoryCode = "GENERAL";
+        }
+
+        return String.format("STK-%s-%03d", categoryCode, this.id);
+    }
+
+    // HELPER METHODS - STOCK
+
+    public boolean isInStock() {
+        return this.stockQuantity != null && this.stockQuantity > 0;
+    }
+
+    public boolean isOutOfStock() {
+        return this.stockQuantity == null || this.stockQuantity == 0;
+    }
+
+
+    public boolean isLowStock() {
+        return this.stockQuantity != null && this.stockQuantity > 0 && this.stockQuantity < 10;
+    }
+
+    public boolean decreaseStock(int quantity) {
+        if (this.stockQuantity == null || this.stockQuantity < quantity) {
+            return false;
+        }
+        this.stockQuantity -= quantity;
+        return true;
+    }
+
+    public void increaseStock(int quantity) {
+        if (this.stockQuantity == null) {
+            this.stockQuantity = 0;
+        }
+        this.stockQuantity += quantity;
     }
 }

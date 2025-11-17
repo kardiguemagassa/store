@@ -48,20 +48,12 @@ public class OrderItem extends BaseEntity {
     @Column(name = "price", nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
-    // =====================================================
     // MÉTHODES UTILITAIRES
-    // =====================================================
 
-    /**
-     * Calcule le sous-total de cet item (price * quantity)
-     */
     public BigDecimal getSubtotal() {
         return price.multiply(BigDecimal.valueOf(quantity));
     }
 
-    /**
-     * Constructeur de convenance pour créer un OrderItem
-     */
     public OrderItem(Order order, Product product, Integer quantity, BigDecimal price) {
         this.order = order;
         this.product = product;
