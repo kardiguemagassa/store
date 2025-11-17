@@ -33,49 +33,20 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     // METHODS SPECIFIQUES UTILES (réduites au minimum)
 
-    /**
-     * Retrieves a paginated list of active products. A product is considered active if its `isActive` field is true.
-     * The query is executed with an entity graph that includes the "category" attribute to fetch associated categories.
-     *
-     * @param pageable the pagination information, including page number, size, and sorting details
-     * @return a Page containing active products with their associated categories
-     */
     @EntityGraph(attributePaths = {"category"})
     @Query("SELECT p FROM Product p WHERE p.isActive = true")
     Page<Product> findActiveProducts(Pageable pageable);
 
-    /**
-     * Retrieves a paginated list of active products by a specific category.
-     * A product is considered active if its `isActive` field is true.
-     * The query is executed with an entity graph that includes the "category" attribute
-     * to fetch associated categories.
-     *
-     * @param categoryCode the code of the category to filter products by
-     * @param pageable the pagination information, including page number, size, and sorting details
-     * @return a Page containing active products associated with the specified category
-     */
     @EntityGraph(attributePaths = {"category"})
     @Query("SELECT p FROM Product p WHERE p.category.code = :categoryCode AND p.isActive = true")
     Page<Product> findActiveProductsByCategory(@Param("categoryCode") String categoryCode, Pageable pageable);
 
-    /**
-     * Checks if an entity exists with the specified name, ignoring case.
-     *
-     * @param name the name of the entity to check for existence
-     * @return true if an entity with the specified name exists, ignoring case; false otherwise
-     */
     boolean existsByNameIgnoreCase(String name);
 
     // COMPTAGE POUR STATISTIQUES
     @Query("SELECT COUNT(p) FROM Product p WHERE p.isActive = true")
     long countActiveProducts();
 
-    /**
-     * Counts the number of inactive products in the database.
-     * A product is considered inactive if its `isActive` field is false.
-     *
-     * @return the count of inactive products
-     */
     @Query("SELECT COUNT(p) FROM Product p WHERE p.isActive = false")
     long countInactiveProducts();
 
@@ -84,7 +55,6 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     @Query("SELECT COUNT(p) FROM Product p WHERE p.stockQuantity = 0")
     long countOutOfStockProducts();
-
 
     // RECHERCHE UNIVERSELLE (remplace toutes les autres méthodes de recherche)
 
