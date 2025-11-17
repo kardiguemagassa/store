@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.common;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -14,7 +14,6 @@ import java.util.Map;
 
 /**
  * DTO de réponse API unifié.
- *
  * IMPORTANT: Tous les messages utilisent l'internationalisation via messages.properties.
  * Aucun message n'est hardcodé dans ce DTO.
  *
@@ -58,10 +57,7 @@ public class ApiResponse<T> {
     @Schema(description = "Identifiant de traçage", nullable = true)
     private String traceId;
 
-    // ========================================================================
     // FACTORY METHODS DE BASE (message déjà localisé)
-    // ========================================================================
-
     /**
      * Crée une réponse de succès.
      *
@@ -111,10 +107,7 @@ public class ApiResponse<T> {
                 .build();
     }
 
-    // ========================================================================
     // FACTORY METHODS - ERREURS
-    // ========================================================================
-
     /**
      * Crée une réponse d'erreur.
      */
@@ -182,10 +175,7 @@ public class ApiResponse<T> {
                 .build();
     }
 
-    // ========================================================================
     // SHORTCUTS HTTP (message déjà localisé)
-    // ========================================================================
-
     public static <T> ApiResponse<T> badRequest(String errorCode, String localizedMessage, String path) {
         return error(HttpStatus.BAD_REQUEST, errorCode, localizedMessage, path);
     }
@@ -215,10 +205,7 @@ public class ApiResponse<T> {
         return error(HttpStatus.UNSUPPORTED_MEDIA_TYPE, errorCode, localizedMessage, path);
     }
 
-    // ========================================================================
     // MÉTHODES UTILITAIRES
-    // ========================================================================
-
     public boolean hasData() {
         return data != null;
     }

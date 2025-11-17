@@ -1,6 +1,5 @@
-package com.store.store.dto;
+package com.store.store.dto.order;
 
-import com.store.store.dto.order.OrderItemResponseDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

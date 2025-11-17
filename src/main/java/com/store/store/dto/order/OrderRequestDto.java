@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.order;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
@@ -67,16 +67,7 @@ public class OrderRequestDto {
         @Schema(description = "Liste des articles de la commande")
         private List<OrderItemDto> items;
 
-        /**
-         * Normalise le statut de paiement Stripe vers notre format interne
-         *
-         * Mapping:
-         * - "succeeded" → "paid"
-         * - "processing", "requires_*" → "pending"
-         * - "canceled", "failed" → "failed"
-         *
-         * @return Le statut normalisé (paid, pending, ou failed)
-         */
+
         public String getNormalizedPaymentStatus() {
                 if (paymentStatus == null || paymentStatus.isBlank()) {
                         return "failed";
@@ -98,12 +89,7 @@ public class OrderRequestDto {
                 };
         }
 
-        /**
-         * ✅ Calcule le total attendu basé sur les items
-         * Utile pour validation de cohérence
-         *
-         * @return Le montant total calculé
-         */
+
         public BigDecimal calculateExpectedTotal() {
                 if (items == null || items.isEmpty()) {
                         return BigDecimal.ZERO;
@@ -113,11 +99,6 @@ public class OrderRequestDto {
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
         }
 
-        /**
-         * ✅ Vérifie si le paiement est réussi
-         *
-         * @return true si le paiement est succeeded ou paid
-         */
         public boolean isPaymentSuccessful() {
                 if (paymentStatus == null) {
                         return false;
@@ -126,11 +107,7 @@ public class OrderRequestDto {
                 return "succeeded".equals(normalized) || "paid".equals(normalized);
         }
 
-        /**
-         * ✅ Vérifie si le total fourni correspond au total calculé
-         *
-         * @return true si les totaux correspondent
-         */
+
         public boolean isTotalValid() {
                 if (totalPrice == null) {
                         return false;
@@ -139,29 +116,14 @@ public class OrderRequestDto {
                 return totalPrice.compareTo(expected) == 0;
         }
 
-        /**
-         * ✅ Compte le nombre total d'items
-         *
-         * @return Le nombre d'items dans la commande
-         */
         public int getTotalItemCount() {
                 if (items == null) {
                         return 0;
                 }
-                return items.stream()
-                        .mapToInt(OrderItemDto::quantity)
-                        .sum();
+                return items.stream().mapToInt(OrderItemDto::quantity).sum();
         }
 
-        /**
-         * ✅ Validation métier - Vérifie la cohérence des données
-         *
-         * @return true si la commande est cohérente
-         */
         public boolean isBusinessValid() {
-                return isTotalValid() &&
-                        getTotalItemCount() > 0 &&
-                        items != null &&
-                        !items.isEmpty();
+                return isTotalValid() && getTotalItemCount() > 0 && items != null && !items.isEmpty();
         }
 }

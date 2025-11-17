@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.user;
 
 import com.store.store.entity.Customer;
 import com.store.store.enums.RoleType;
@@ -63,13 +63,8 @@ public class PromotionResponseDto {
     )
     private String userName;
 
-    // ========================================================================
     // FACTORY METHODS
-    // ========================================================================
 
-    /**
-     * Crée une réponse pour une promotion
-     */
     public static PromotionResponseDto fromPromotion(Customer customer, RoleType newRole, String actionBy) {
         return PromotionResponseDto.builder()
                 .message(String.format("Utilisateur promu au rôle %s", newRole.getDisplayName()))
@@ -83,9 +78,6 @@ public class PromotionResponseDto {
                 .build();
     }
 
-    /**
-     * Crée une réponse pour une démotion
-     */
     public static PromotionResponseDto fromDemotion(Customer customer, RoleType removedRole, String actionBy) {
         return PromotionResponseDto.builder()
                 .message(String.format("Rôle %s retiré avec succès", removedRole.getDisplayName()))
@@ -99,9 +91,6 @@ public class PromotionResponseDto {
                 .build();
     }
 
-    /**
-     * Crée une réponse pour une mise à jour de rôle
-     */
     public static PromotionResponseDto fromRoleUpdate(Customer customer, RoleType oldRole,
                                                       RoleType newRole, String actionBy) {
         return PromotionResponseDto.builder()
@@ -117,9 +106,6 @@ public class PromotionResponseDto {
                 .build();
     }
 
-    /**
-     * Crée une réponse pour l'attribution d'un rôle initial
-     */
     public static PromotionResponseDto fromInitialRole(Customer customer, RoleType initialRole, String actionBy) {
         return PromotionResponseDto.builder()
                 .message(String.format("Rôle initial %s attribué", initialRole.getDisplayName()))
@@ -133,34 +119,21 @@ public class PromotionResponseDto {
                 .build();
     }
 
-    // ========================================================================
-    // MÉTHODES UTILITAIRES
-    // ========================================================================
 
-    /**
-     * Vérifie si l'opération est une promotion
-     */
+    // MÉTHODES UTILITAIRES
+
     public boolean isPromotion() {
         return "PROMOTION".equals(actionType);
     }
 
-    /**
-     * Vérifie si l'opération est une démotion
-     */
     public boolean isDemotion() {
         return "DEMOTION".equals(actionType);
     }
 
-    /**
-     * Vérifie si l'opération est une mise à jour de rôle
-     */
     public boolean isRoleUpdate() {
         return "ROLE_UPDATE".equals(actionType);
     }
 
-    /**
-     * Retourne le type d'action sous forme lisible
-     */
     public String getActionTypeLabel() {
         if (actionType == null) return "Opération";
 
@@ -173,25 +146,17 @@ public class PromotionResponseDto {
         };
     }
 
-    /**
-     * Retourne un résumé de l'opération pour les logs
-     */
+
     public String getOperationSummary() {
         return String.format("%s: %s -> %s (par: %s)",
                 getActionTypeLabel(), userEmail, newRole != null ? newRole : "Aucun rôle", actionBy);
     }
 
-    /**
-     * Vérifie si l'opération a été effectuée récemment
-     */
     public boolean isRecentOperation() {
         if (timestamp == null) return false;
         return timestamp.isAfter(LocalDateTime.now().minusHours(24));
     }
 
-    /**
-     * Masque partiellement l'email de l'actionnaire pour la confidentialité
-     */
     public String getMaskedActionBy() {
         if (actionBy == null || actionBy.trim().isEmpty()) {
             return "Système";

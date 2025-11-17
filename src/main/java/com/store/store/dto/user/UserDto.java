@@ -1,7 +1,8 @@
-package com.store.store.dto;
+package com.store.store.dto.user;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.store.store.dto.address.AddressDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -92,10 +93,7 @@ public class UserDto {
     )
     private String avatarUrl;
 
-    // ========================================================================
     // MÉTHODES UTILITAIRES
-    // ========================================================================
-
 
     public boolean hasRole(String role) {
         if (roles == null && roleSet == null) {

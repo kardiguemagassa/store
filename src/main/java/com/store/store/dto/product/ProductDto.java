@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.product;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;
@@ -29,7 +29,6 @@ public class ProductDto {
     @Min(value = 0, message = "{validation.min.value}")
     private Integer popularity;
 
-    // Galerie d'images supplémentaires
     @Size(max = 10, message = "{validation.product.gallery.size}")
     private List<String> galleryImages = new ArrayList<>();
 
@@ -43,18 +42,13 @@ public class ProductDto {
     @NotNull(message = "{validation.required}")
     private Long categoryId;
 
-    // Champs supplémentaires pour l'affichage (non modifiables)
+
     private String categoryCode;
     private String categoryName;
     private String categoryIcon;
 
-    // =====================================================
     // MÉTHODES UTILITAIRES POUR LA GALERIE
-    // =====================================================
 
-    /**
-     * Ajoute une image à la galerie
-     */
     public void addGalleryImage(String imageUrl) {
         if (this.galleryImages == null) {
             this.galleryImages = new ArrayList<>();
@@ -64,9 +58,6 @@ public class ProductDto {
         }
     }
 
-    /**
-     * Ajoute une image à une position spécifique dans la galerie
-     */
     public void addGalleryImage(String imageUrl, int position) {
         if (this.galleryImages == null) {
             this.galleryImages = new ArrayList<>();
@@ -78,9 +69,6 @@ public class ProductDto {
         }
     }
 
-    /**
-     * Supprime une image de la galerie par URL
-     */
     public boolean removeGalleryImage(String imageUrl) {
         if (this.galleryImages != null) {
             return this.galleryImages.remove(imageUrl);
@@ -88,9 +76,6 @@ public class ProductDto {
         return false;
     }
 
-    /**
-     * Supprime une image de la galerie par position
-     */
     public String removeGalleryImage(int position) {
         if (this.galleryImages != null && position >= 0 && position < this.galleryImages.size()) {
             return this.galleryImages.remove(position);
@@ -98,32 +83,20 @@ public class ProductDto {
         return null;
     }
 
-    /**
-     * Vide la galerie d'images
-     */
     public void clearGalleryImages() {
         if (this.galleryImages != null) {
             this.galleryImages.clear();
         }
     }
 
-    /**
-     * Retourne le nombre d'images dans la galerie
-     */
     public int getGalleryImagesCount() {
         return this.galleryImages != null ? this.galleryImages.size() : 0;
     }
 
-    /**
-     * Vérifie si une image existe dans la galerie
-     */
     public boolean hasGalleryImage(String imageUrl) {
         return this.galleryImages != null && this.galleryImages.contains(imageUrl);
     }
 
-    /**
-     * Retourne la première image de la galerie
-     */
     public String getFirstGalleryImage() {
         if (this.galleryImages != null && !this.galleryImages.isEmpty()) {
             return this.galleryImages.get(0);
@@ -131,9 +104,6 @@ public class ProductDto {
         return null;
     }
 
-    /**
-     * URL de l'image principale (priorité à imageUrl, puis première de la galerie)
-     */
     public String getMainImageUrl() {
         if (this.imageUrl != null && !this.imageUrl.trim().isEmpty()) {
             return this.imageUrl;
@@ -141,9 +111,6 @@ public class ProductDto {
         return getFirstGalleryImage();
     }
 
-    /**
-     * TOUTES les images (principale + galerie)
-     */
     public List<String> getAllImages() {
         List<String> allImages = new ArrayList<>();
 
@@ -160,23 +127,14 @@ public class ProductDto {
         return allImages;
     }
 
-    /**
-     * Vérifie si le produit a des images
-     */
     public boolean hasImages() {
         return (imageUrl != null && !imageUrl.trim().isEmpty()) || (galleryImages != null && !galleryImages.isEmpty());
     }
 
-    /**
-     * Vérifie si le produit est actif et en stock
-     */
     public boolean isAvailable() {
         return Boolean.TRUE.equals(isActive) && stockQuantity != null && stockQuantity > 0;
     }
 
-    /**
-     * Calcule le prix avec une remise
-     */
     public BigDecimal getPriceWithDiscount(BigDecimal discountPercentage) {
         if (price == null || discountPercentage == null) {
             return price;

@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.contact;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
@@ -8,11 +8,6 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 
 /**
- * DTO de requête pour l'envoi d'un message de contact.
- *
- * Tous les champs sont obligatoires et validés automatiquement
- * par @Valid dans le controller.
- *
  * @author Kardigué
  * @version 1.0
  */

@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.payment;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -40,7 +40,7 @@ public record PaymentIntentResponseDto(
         String currency
 ) {
 
-        // ✅ Factory method depuis un Payment Intent Stripe
+        // Factory method depuis un Payment Intent Stripe
         public static PaymentIntentResponseDto fromStripeIntent(com.stripe.model.PaymentIntent stripeIntent) {
                 return new PaymentIntentResponseDto(
                         stripeIntent.getClientSecret(),
@@ -51,7 +51,7 @@ public record PaymentIntentResponseDto(
                 );
         }
 
-        // ✅ Factory method simplifiée (pour tests ou cas simples)
+        // Factory method simplifiée (pour tests ou cas simples)
         public static PaymentIntentResponseDto of(String clientSecret, String paymentIntentId) {
                 return new PaymentIntentResponseDto(
                         clientSecret,
@@ -62,33 +62,33 @@ public record PaymentIntentResponseDto(
                 );
         }
 
-        // ✅ Méthode helper - Vérifie si le paiement nécessite une action
+        // Méthode helper - Vérifie si le paiement nécessite une action
         public boolean requiresAction() {
                 return "requires_action".equals(status) || "requires_payment_method".equals(status);
         }
 
-        // ✅ Méthode helper - Vérifie si le paiement est réussi
+        // Méthode helper - Vérifie si le paiement est réussi
         public boolean isSucceeded() {
                 return "succeeded".equals(status);
         }
 
-        // ✅ Méthode helper - Vérifie si le paiement est en cours
+        // Méthode helper - Vérifie si le paiement est en cours
         public boolean isProcessing() {
                 return "processing".equals(status);
         }
 
-        // ✅ Méthode helper - Vérifie si le paiement est annulé
+        // Méthode helper - Vérifie si le paiement est annulé
         public boolean isCanceled() {
                 return "canceled".equals(status);
         }
 
-        // ✅ Méthode helper - Conversion du montant en euros
+        // Méthode helper - Conversion du montant en euros
         public java.math.BigDecimal getAmountInEuros() {
                 if (amount == null) return null;
                 return java.math.BigDecimal.valueOf(amount).divide(java.math.BigDecimal.valueOf(100));
         }
 
-        // ✅ Méthode helper - Obtient le statut lisible
+        // Méthode helper - Obtient le statut lisible
         public String getStatusLabel() {
                 if (status == null) return "Inconnu";
 

@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.order;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -42,9 +42,6 @@ public record OrderValidationResultDto(
         Boolean totalsMatch
 ) {
 
-    /**
-     * Constructeur principal avec calcul automatique de totalsMatch
-     */
     public OrderValidationResultDto {
         if (totalsMatch == null) {
             totalsMatch = calculateTotalsMatch(calculatedTotal, expectedTotal);
@@ -54,28 +51,16 @@ public record OrderValidationResultDto(
         }
     }
 
-    /**
-     * Constructeur simplifié sans totalsMatch (calculé automatiquement)
-     */
+
     public OrderValidationResultDto(boolean isValid, List<String> errors,
                                     BigDecimal calculatedTotal, BigDecimal expectedTotal) {
         this(isValid, errors, calculatedTotal, expectedTotal, null);
     }
 
-    /**
-     * Vérifie s'il y a une discordance entre les totaux
-     *
-     * @return true si calculatedTotal != expectedTotal
-     */
     public boolean hasDiscrepancy() {
         return !totalsMatch;
     }
 
-    /**
-     * Calcule la différence entre les totaux
-     *
-     * @return calculatedTotal - expectedTotal
-     */
     public BigDecimal getDiscrepancy() {
         if (calculatedTotal == null || expectedTotal == null) {
             return BigDecimal.ZERO;
@@ -83,32 +68,21 @@ public record OrderValidationResultDto(
         return calculatedTotal.subtract(expectedTotal);
     }
 
-    /**
-     * Retourne le nombre d'erreurs
-     */
     public int getErrorCount() {
         return errors != null ? errors.size() : 0;
     }
 
-    /**
-     * Vérifie si des erreurs existent
-     */
     public boolean hasErrors() {
         return errors != null && !errors.isEmpty();
     }
 
-    /**
-     * Vérifie si la validation a échoué uniquement à cause des totaux
-     */
     public boolean isOnlyTotalDiscrepancy() {
         return !isValid &&
                 hasDiscrepancy() &&
                 (errors == null || errors.size() == 1 && errors.get(0).contains("total"));
     }
 
-    /**
-     * Ajoute une erreur et marque comme invalide
-     */
+
     public OrderValidationResultDto withError(String error) {
         List<String> newErrors = errors != null ?
                 new java.util.ArrayList<>(errors) : new java.util.ArrayList<>();
@@ -123,9 +97,6 @@ public record OrderValidationResultDto(
         );
     }
 
-    /**
-     * Crée un résultat valide (sans erreurs)
-     */
     public static OrderValidationResultDto valid(BigDecimal calculatedTotal, BigDecimal expectedTotal) {
         return new OrderValidationResultDto(
                 true,
@@ -136,9 +107,6 @@ public record OrderValidationResultDto(
         );
     }
 
-    /**
-     * Crée un résultat invalide avec erreurs
-     */
     public static OrderValidationResultDto invalid(
             List<String> errors,
             BigDecimal calculatedTotal,
@@ -153,9 +121,6 @@ public record OrderValidationResultDto(
         );
     }
 
-    /**
-     * Crée un résultat invalide avec une seule erreur
-     */
     public static OrderValidationResultDto invalid(
             String error,
             BigDecimal calculatedTotal,
@@ -164,9 +129,6 @@ public record OrderValidationResultDto(
         return invalid(List.of(error), calculatedTotal, expectedTotal);
     }
 
-    /**
-     * Crée un résultat pour discordance de totaux
-     */
     public static OrderValidationResultDto totalDiscrepancy(
             BigDecimal calculatedTotal,
             BigDecimal expectedTotal
@@ -179,9 +141,6 @@ public record OrderValidationResultDto(
         );
     }
 
-    /**
-     * Calcule si les totaux correspondent
-     */
     private static boolean calculateTotalsMatch(BigDecimal calculatedTotal, BigDecimal expectedTotal) {
         if (calculatedTotal == null || expectedTotal == null) {
             return false;
@@ -189,9 +148,6 @@ public record OrderValidationResultDto(
         return calculatedTotal.compareTo(expectedTotal) == 0;
     }
 
-    /**
-     * Obtient un message de résumé de validation
-     */
     public String getSummary() {
         if (isValid) {
             return "La commande est valide";
@@ -204,9 +160,6 @@ public record OrderValidationResultDto(
         return "La commande n'est pas valide";
     }
 
-    /**
-     * Vérifie si la commande peut être créée malgré les avertissements
-     */
     public boolean canProceedWithWarnings() {
         return !isValid && isOnlyTotalDiscrepancy();
     }

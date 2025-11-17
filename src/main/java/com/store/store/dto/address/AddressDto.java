@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.address;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;

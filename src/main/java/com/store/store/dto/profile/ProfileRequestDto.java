@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.profile;
 
 import jakarta.validation.constraints.*;
 import lombok.Getter;
@@ -59,9 +59,7 @@ public class ProfileRequestDto {
 
 
     // MÉTHODES UTILITAIRES
-    /**
-     * Vérifie si une adresse est fournie
-     */
+
     public boolean hasAddress() {
         return (street != null && !street.trim().isEmpty()) ||
                 (city != null && !city.trim().isEmpty()) ||
@@ -70,9 +68,6 @@ public class ProfileRequestDto {
                 (country != null && !country.trim().isEmpty());
     }
 
-    /**
-     * Vérifie si l'adresse est complète
-     */
     public boolean isFullAddressProvided() {
         return street != null && !street.trim().isEmpty() &&
                 city != null && !city.trim().isEmpty() &&
@@ -81,9 +76,6 @@ public class ProfileRequestDto {
                 country != null && !country.trim().isEmpty();
     }
 
-    /**
-     * Vérifie si aucun champ d'adresse n'est fourni
-     */
     public boolean isAddressEmpty() {
         return (street == null || street.trim().isEmpty()) &&
                 (city == null || city.trim().isEmpty()) &&
@@ -92,9 +84,6 @@ public class ProfileRequestDto {
                 (country == null || country.trim().isEmpty());
     }
 
-    /**
-     * Retourne une représentation textuelle de l'adresse
-     */
     public String getFormattedAddress() {
         if (!isFullAddressProvided()) {
             return null;

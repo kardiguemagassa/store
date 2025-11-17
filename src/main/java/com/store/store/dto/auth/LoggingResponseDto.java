@@ -1,3 +1,3 @@
-package com.store.store.dto;
+package com.store.store.dto.auth;
 
 public record LoggingResponseDto(String message, String status) { }

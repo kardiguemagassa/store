@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.contact;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
@@ -8,16 +8,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * DTO des informations de contact de l'entreprise.
- *
- * Chargé automatiquement depuis application.yml/properties :
- * <pre>
- * contact:
- *   phone: "+33 1 23 45 67 89"
- *   email: "contact@eazystore.com"
- *   address: "123 Rue de la Paix, 75001 Paris"
- * </pre>
- *
  * @author Kardigué
  * @version 1.0
  */

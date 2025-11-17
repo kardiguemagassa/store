@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.auth;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
