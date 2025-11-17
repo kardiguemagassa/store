@@ -1,16 +1,12 @@
 package com.store.store.service;
 
-import com.store.store.dto.LoginResponseDto;
+import com.store.store.dto.auth.LoginResponseDto;
 import com.store.store.entity.Customer;
 import com.store.store.entity.RefreshToken;
 
 import java.util.List;
 
 /**
- * Interface définissant les opérations pour gérer les refresh tokens.
- * Les refresh tokens sont utilisés pour renouveler des JWT (JSON Web Tokens)
- * de manière sécurisée et gérer les sessions utilisateur.
- *
  * @author Kardigué
  * @version 3.0 - Added refreshAccessToken for HttpOnly cookies
  * @since 2025-11-01

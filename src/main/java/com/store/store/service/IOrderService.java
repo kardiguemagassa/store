@@ -1,14 +1,11 @@
 package com.store.store.service;
 
-import com.store.store.dto.OrderRequestDto;
-import com.store.store.dto.OrderResponseDto;
+import com.store.store.dto.order.OrderRequestDto;
+import com.store.store.dto.order.OrderResponseDto;
 
 import java.util.List;
 
 /**
- * Service interface for managing orders. Provides methods to create,
- * retrieve, and update order information.
- *
  * @author Kardigué
  * @version 3.0
  * @since 2025-11-01

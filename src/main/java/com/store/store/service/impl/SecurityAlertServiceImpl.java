@@ -15,15 +15,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Implementation of the ISecurityAlertService interface for managing security alerts.
- * Provides functionality to send notifications about suspicious activities,
- * new device logins, and token revocations to users.
- *
- * This class uses asynchronous processing (@Async) for email notifications to improve
- * application performance and user experience.
- * Emails are sent with HTML content for better visual presentation, including inline CSS
- * for enhanced compatibility with various email clients.
- *
  * @author Kardigué
  * @version 3.0
  * @since 2025-11-01
@@ -36,16 +27,6 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
     // Service Spring Mail pour l'envoi d'emails
     private final JavaMailSender mailSender;
 
-    /**
-     * Sends a security alert notification to a customer for a potential account compromise incident.
-     * This method operates asynchronously and utilizes HTML for rich email formatting.
-     *
-     * @param customer The customer to whom the notification will be sent.
-     *                 Must contain a valid email address.
-     * @param ipAddress The IP address associated with the suspicious activity.
-     * @param userAgent The User-Agent string of the device involved in the suspected incident.
-     * @param incidentType The type or description of the detected security incident.
-     */
     @Async
     @Override
     public void notifyPossibleAccountCompromise(Customer customer, String ipAddress, String userAgent, String incidentType) {
@@ -94,15 +75,6 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
         }
     }
 
-    /**
-     * Sends a notification to a customer when a new device is used to log into their account.
-     * The notification includes details such as the IP address, timestamp, and device information.
-     * This method is executed asynchronously.
-     *
-     * @param customer The customer to whom the notification will be sent. Must contain a valid email address.
-     * @param ipAddress The IP address of the device used during the login.
-     * @param userAgent The User-Agent string describing the browser or device used for the login.
-     */
     @Async
     @Override
     public void notifyNewDeviceLogin(
@@ -144,14 +116,6 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
         }
     }
 
-    /**
-     * Sends a notification to a customer indicating that all active tokens have been revoked.
-     * The notification is sent via email and includes details about the revocation and its reason.
-     * This method is executed asynchronously.
-     *
-     * @param customer The customer to whom the notification will be sent. Must contain a valid email address.
-     * @param reason The reason for the revocation of all tokens.
-     */
     @Async
     @Override
     public void notifyAllTokensRevoked(Customer customer, String reason) {
@@ -191,16 +155,6 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
 
     // MÉTHODES PRIVÉES - HTML TEMPLATES
 
-    /**
-     * Generates an HTML string for a security alert notification sent to a customer.
-     *
-     * @param customerName the name of the customer receiving the alert
-     * @param incidentType the type of security incident that occurred
-     * @param timestamp the date and time when the incident was detected
-     * @param ipAddress the IP address involved in the incident
-     * @param deviceInfo information about the device associated with the incident
-     * @return a string containing the HTML content of the security alert message
-     */
     private String buildSecurityAlertHtml(
             String customerName,
             String incidentType,
@@ -344,15 +298,6 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
         );
     }
 
-    /**
-     * Builds the HTML content for the "new device login" notification email.
-     *
-     * @param customerName the name of the customer to address in the email
-     * @param timestamp the date and time of the detected login
-     * @param ipAddress the IP address from which the login was made
-     * @param deviceInfo details about the device used for the login
-     * @return a string representing the formatted HTML content for the email
-     */
     private String buildNewDeviceLoginHtml(
             String customerName,
             String timestamp,
@@ -567,13 +512,6 @@ public class SecurityAlertServiceImpl implements ISecurityAlertService {
         );
     }
 
-    /**
-     * Extracts information about the browser and operating system from a given User-Agent string.
-     * If the User-Agent string is null or empty, it returns a default message indicating an unknown device.
-     *
-     * @param userAgent the User-Agent string containing details of the browser and operating system
-     * @return a string in the format "Browser on OS", or "Appareil inconnu" for unknown devices
-     */
     private String extractDeviceInfo(String userAgent) {
         if (userAgent == null || userAgent.isBlank()) {
             return "Appareil inconnu";
