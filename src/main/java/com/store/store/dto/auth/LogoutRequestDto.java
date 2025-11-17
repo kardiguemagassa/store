@@ -1,13 +1,12 @@
-package com.store.store.dto;
+package com.store.store.dto.auth;
 
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
 /**
- * Represents a data transfer object (DTO) used for logout requests.
- * This record encapsulates the necessary data required to perform a logout operation.
- *
+ * Représente un objet de transfert de données (DTO) utilisé pour les demandes de déconnexion.
+ * Cet enregistrement encapsule les données nécessaires à l'exécution d'une opération de déconnexion.
  * @author Kardigué
  * @version 1.0
  * @since 2025-11-01

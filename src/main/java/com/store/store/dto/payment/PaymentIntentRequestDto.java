@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.payment;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;

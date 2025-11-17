@@ -1,14 +1,15 @@
-package com.store.store.dto;
+package com.store.store.dto.auth;
+
+import com.store.store.dto.user.UserDto;
 
 /**
- * Data Transfer Object representing the response of a login operation.
- * This includes a message, user details, tokens, and expiration information.
- *
- * @param message       A message indicating the status of the login operation.
- * @param user          An instance of {@code UserDto} representing details of the logged-in user.
- * @param jwtToken      The generated JWT token for authentication purposes.
- * @param refreshToken  A UUID refresh token used for obtaining a new JWT token.
- * @param expiresIn     The expiration time (in seconds) of the JWT token, typically 900 seconds.
+ * Objet de transfert de données représentant la réponse à une opération de connexion.
+ * Il contient un message, les informations de l'utilisateur, les jetons et les informations d'expiration.
+ * @param message Un message indiquant l'état de l'opération de connexion.
+ * @param user Une instance de {@code UserDto} représentant les informations de l'utilisateur connecté.
+ * @param jwtToken Le jeton JWT généré à des fins d'authentification.
+ * @param refreshToken Un jeton d'actualisation UUID utilisé pour obtenir un nouveau jeton JWT.
+ * @param expiresIn La durée de validité (en secondes) du jeton JWT, généralement 900 secondes.
  */
 public record LoginResponseDto(
         String message,

@@ -1,13 +1,9 @@
-package com.store.store.dto;
+package com.store.store.dto.contact;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
 /**
- * DTO de réponse pour un message de contact.
- *
- * Retourné par l'API pour afficher les messages en administration.
- *
  * @author Kardigué
  * @version 1.0
  */

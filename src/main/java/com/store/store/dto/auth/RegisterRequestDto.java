@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.auth;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
@@ -49,7 +49,7 @@ public class RegisterRequestDto {
     @NotBlank(message = "{validation.required}")
     @Size(min = 8, max = 128, message = "{validation.register.password.size}")
     @Pattern(
-            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
+            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#])[A-Za-z\\d@$!%*?&#]{8,}$",
             message = "{validation.register.password.pattern}"
     )
     private String password;

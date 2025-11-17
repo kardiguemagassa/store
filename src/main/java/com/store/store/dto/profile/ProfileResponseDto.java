@@ -1,5 +1,6 @@
-package com.store.store.dto;
+package com.store.store.dto.profile;
 
+import com.store.store.dto.address.AddressDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -58,16 +59,11 @@ public class ProfileResponseDto {
     }
 
     // MÉTHODES UTILITAIRES
-    /**
-     * Vérifie si le profil est actif
-     */
+
     public boolean isProfileActive() {
         return Boolean.TRUE.equals(isActive);
     }
 
-    /**
-     * Retourne le nom formaté pour l'affichage
-     */
     public String getDisplayName() {
         if (name == null || name.trim().isEmpty()) {
             return "Utilisateur";
@@ -75,9 +71,6 @@ public class ProfileResponseDto {
         return name.trim();
     }
 
-    /**
-     * Masque partiellement l'email pour la confidentialité
-     */
     public String getMaskedEmail() {
         if (email == null || email.trim().isEmpty()) {
             return "";
@@ -98,9 +91,6 @@ public class ProfileResponseDto {
         return username.substring(0, 2) + "***@" + domain;
     }
 
-    /**
-     * Masque partiellement le numéro de mobile pour la confidentialité
-     */
     public String getMaskedMobileNumber() {
         if (mobileNumber == null || mobileNumber.trim().isEmpty()) {
             return "";
@@ -114,9 +104,6 @@ public class ProfileResponseDto {
         return "******" + cleanNumber.substring(cleanNumber.length() - 4);
     }
 
-    /**
-     * Vérifie si le profil a été récemment mis à jour
-     */
     public boolean isRecentlyUpdated() {
         if (updatedAt == null) {
             return false;
@@ -125,9 +112,7 @@ public class ProfileResponseDto {
     }
 
     // FACTORY METHODS
-    /**
-     * Crée une réponse de profil basique
-     */
+
     public static ProfileResponseDto basic(Long customerId, String name, String email, String mobileNumber) {
         return ProfileResponseDto.builder()
                 .customerId(customerId)
@@ -141,9 +126,6 @@ public class ProfileResponseDto {
                 .build();
     }
 
-    /**
-     * Crée une réponse de profil complète
-     */
     public static ProfileResponseDto complete(Long customerId, String name, String email,
                                               String mobileNumber, AddressDto address) {
         return ProfileResponseDto.builder()
@@ -159,9 +141,6 @@ public class ProfileResponseDto {
                 .build();
     }
 
-    /**
-     * Crée une réponse pour une mise à jour d'email
-     */
     public static ProfileResponseDto withEmailUpdated(Long customerId, String name, String newEmail,
                                                       String mobileNumber, AddressDto address) {
         return ProfileResponseDto.builder()

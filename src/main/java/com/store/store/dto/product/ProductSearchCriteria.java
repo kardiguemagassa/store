@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.product;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Pattern;
@@ -53,53 +53,33 @@ public record ProductSearchCriteria(
     }
 
     // MÉTHODES DE VALIDATION
-    /**
-     * Valide la cohérence de la plage de prix
-     */
+
     private void validatePriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
         if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
             throw new IllegalArgumentException("Le prix minimum ne peut pas être supérieur au prix maximum");
         }
     }
 
-    /**
-     * Vérifie si une recherche par texte est active
-     */
     public boolean hasSearchQuery() {
         return searchQuery != null && !searchQuery.trim().isEmpty();
     }
 
-    /**
-     * Vérifie si un filtre par catégorie est actif
-     */
     public boolean hasCategoryFilter() {
         return categoryCode != null && !categoryCode.trim().isEmpty();
     }
 
-    /**
-     * Vérifie si un filtre par prix est actif
-     */
     public boolean hasPriceFilter() {
         return minPrice != null || maxPrice != null;
     }
 
-    /**
-     * Vérifie si un filtre de stock est actif
-     */
     public boolean hasStockFilter() {
         return inStockOnly != null && inStockOnly;
     }
 
-    /**
-     * Vérifie si des filtres sont actifs
-     */
     public boolean hasFilters() {
         return hasSearchQuery() || hasCategoryFilter() || hasPriceFilter() || hasStockFilter();
     }
 
-    /**
-     * Retourne le champ de tri sous forme de chaîne pour JPA
-     */
     public String getSortField() {
         return switch (sortBy) {
             case NAME -> "name";
@@ -110,45 +90,28 @@ public record ProductSearchCriteria(
         };
     }
 
-    /**
-     * Retourne la direction de tri sous forme de chaîne pour JPA
-     */
     public String getSortDirection() {
         return sortDirection.name().toLowerCase();
     }
 
     // FACTORY METHODS
-    /**
-     * Crée un critère de recherche simple par query
-     */
+
     public static ProductSearchCriteria bySearchQuery(String searchQuery) {
         return builder().searchQuery(searchQuery).build();
     }
 
-    /**
-     * Crée un critère de recherche par catégorie
-     */
     public static ProductSearchCriteria byCategory(String categoryCode) {
         return builder().categoryCode(categoryCode).build();
     }
 
-    /**
-     * Crée un critère de recherche par plage de prix
-     */
     public static ProductSearchCriteria byPriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
         return builder().minPrice(minPrice).maxPrice(maxPrice).build();
     }
 
-    /**
-     * Crée un critère pour les produits en stock
-     */
     public static ProductSearchCriteria inStock() {
         return builder().inStockOnly(true).build();
     }
 
-    /**
-     * Crée un critère pour tous les produits (sans filtre)
-     */
     public static ProductSearchCriteria all() {
         return builder().build();
     }

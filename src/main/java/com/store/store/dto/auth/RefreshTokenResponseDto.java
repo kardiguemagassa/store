@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.auth;
 
 import com.store.store.dto.user.UserDto;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -64,9 +64,7 @@ public record RefreshTokenResponseDto(
         UserDto user
 ) {
 
-        // ========================================================================
         // FACTORY METHODS
-        // ========================================================================
 
         /**
          * Crée une réponse avec rotation du refresh token

@@ -1,4 +1,4 @@
-package com.store.store.dto;
+package com.store.store.dto.category;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;
