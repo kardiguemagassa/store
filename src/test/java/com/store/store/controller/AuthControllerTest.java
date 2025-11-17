@@ -1,48 +1,8 @@
 package com.store.store.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.store.store.config.TestSecurityConfig;
-import com.store.store.dto.LoginRequestDto;
-import com.store.store.dto.RegisterRequestDto;
-import com.store.store.entity.Customer;
-import com.store.store.entity.Role;
-import com.store.store.repository.CustomerRepository;
-import com.store.store.repository.RoleRepository;
-import com.store.store.security.CustomerUserDetails;
-import com.store.store.service.IRoleAssignmentService;
-import com.store.store.util.JwtUtil;
-import com.store.store.util.TestDataBuilder;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.authentication.password.CompromisedPasswordChecker;
-import org.springframework.security.authentication.password.CompromisedPasswordDecision;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.Collections;
-import java.util.Optional;
-import java.util.Set;
-
-import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * Tests unitaires du AuthController

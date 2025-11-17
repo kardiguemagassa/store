@@ -2,8 +2,8 @@ package com.store.store.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.store.store.config.TestSecurityConfig;
-import com.store.store.dto.OrderRequestDto;
-import com.store.store.dto.OrderResponseDto;
+import com.store.store.dto.order.OrderRequestDto;
+import com.store.store.dto.order.OrderResponseDto;
 import com.store.store.exception.ResourceNotFoundException;
 import com.store.store.service.IOrderService;
 import com.store.store.util.TestDataBuilder;

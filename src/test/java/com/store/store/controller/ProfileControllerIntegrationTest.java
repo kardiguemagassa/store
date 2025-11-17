@@ -1,7 +1,7 @@
 package com.store.store.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.store.store.dto.ProfileRequestDto;
+import com.store.store.dto.profile.ProfileRequestDto;
 import com.store.store.entity.Address;
 import com.store.store.entity.Customer;
 import com.store.store.repository.CustomerRepository;
@@ -19,7 +19,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.hamcrest.Matchers.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;

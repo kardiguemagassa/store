@@ -1,8 +1,8 @@
 package com.store.store.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.store.store.dto.LoginRequestDto;
-import com.store.store.dto.RegisterRequestDto;
+import com.store.store.dto.auth.LoginRequestDto;
+import com.store.store.dto.auth.RegisterRequestDto;
 import com.store.store.entity.Customer;
 import com.store.store.entity.Role;
 import com.store.store.enums.RoleType;

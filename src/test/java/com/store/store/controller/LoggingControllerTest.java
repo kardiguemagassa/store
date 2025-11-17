@@ -2,7 +2,7 @@ package com.store.store.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.store.store.config.TestSecurityConfig;
-import com.store.store.dto.LoggingResponseDto;
+import com.store.store.dto.auth.LoggingResponseDto;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -1,7 +1,7 @@
 package com.store.store.service.impl;
 
-import com.store.store.dto.PaymentIntentRequestDto;
-import com.store.store.dto.PaymentIntentResponseDto;
+import com.store.store.dto.payment.PaymentIntentRequestDto;
+import com.store.store.dto.payment.PaymentIntentResponseDto;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.param.PaymentIntentCreateParams;

@@ -1,8 +1,8 @@
 package com.store.store.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.store.store.dto.OrderItemDto;
-import com.store.store.dto.OrderRequestDto;
+import com.store.store.dto.order.OrderItemDto;
+import com.store.store.dto.order.OrderRequestDto;
 import com.store.store.entity.Category;
 import com.store.store.entity.Order;
 import com.store.store.entity.Product;

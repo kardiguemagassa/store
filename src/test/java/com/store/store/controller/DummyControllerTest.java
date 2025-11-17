@@ -1,7 +1,7 @@
 package com.store.store.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.store.store.dto.UserDto;
+import com.store.store.dto.user.UserDto;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

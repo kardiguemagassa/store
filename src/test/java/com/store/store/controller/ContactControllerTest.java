@@ -2,8 +2,8 @@ package com.store.store.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.store.store.config.TestSecurityConfig;
-import com.store.store.dto.ContactInfoDto;
-import com.store.store.dto.ContactRequestDto;
+import com.store.store.dto.contact.ContactInfoDto;
+import com.store.store.dto.contact.ContactRequestDto;
 import com.store.store.service.IContactService;
 import com.store.store.util.TestDataBuilder;
 import lombok.extern.slf4j.Slf4j;

@@ -1,8 +1,8 @@
 package com.store.store.service.impl;
 
 import com.store.store.constants.ApplicationConstants;
-import com.store.store.dto.ContactRequestDto;
-import com.store.store.dto.ContactResponseDto;
+import com.store.store.dto.contact.ContactRequestDto;
+import com.store.store.dto.contact.ContactResponseDto;
 import com.store.store.entity.Contact;
 import com.store.store.exception.ResourceNotFoundException;
 import com.store.store.repository.ContactRepository;

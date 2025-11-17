@@ -1,7 +1,17 @@
 package com.store.store.util;
 
 import com.store.store.constants.ApplicationConstants;
-import com.store.store.dto.*;
+import com.store.store.dto.address.AddressDto;
+import com.store.store.dto.contact.ContactRequestDto;
+import com.store.store.dto.contact.ContactResponseDto;
+import com.store.store.dto.order.OrderItemDto;
+import com.store.store.dto.order.OrderItemResponseDto;
+import com.store.store.dto.order.OrderRequestDto;
+import com.store.store.dto.order.OrderResponseDto;
+import com.store.store.dto.payment.PaymentIntentRequestDto;
+import com.store.store.dto.product.ProductDto;
+import com.store.store.dto.profile.ProfileRequestDto;
+import com.store.store.dto.profile.ProfileResponseDto;
 import com.store.store.entity.*;
 import com.store.store.enums.RoleType;
 
@@ -704,7 +714,7 @@ public class TestDataBuilder {
     /**
      * Crée un PaymentIntentResponseDto
      */
-    public static PaymentIntentResponseDto createPaymentIntentResponseDto(String clientSecret) {
+    /*public static PaymentIntentResponseDto createPaymentIntentResponseDto(String clientSecret) {
         return new PaymentIntentResponseDto(clientSecret);
-    }
+    }*/
 }

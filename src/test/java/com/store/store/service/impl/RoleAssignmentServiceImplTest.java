@@ -1,6 +1,6 @@
 package com.store.store.service.impl;
 
-import com.store.store.dto.RegisterRequestDto;
+import com.store.store.dto.auth.RegisterRequestDto;
 import com.store.store.entity.Customer;
 import com.store.store.entity.Role;
 import com.store.store.enums.RoleType;
@@ -24,7 +24,6 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
