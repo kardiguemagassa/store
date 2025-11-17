@@ -1,105 +1,185 @@
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Développeur', 'Assistant de code!', 5.00, 85, '/stickers/developer.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+USE eazystore;
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Casser', 'Hé, prenons une pause et recommençons à zéro sur la ligne suivante', 4.50, 40, '/stickers/break.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Mbappé', 'Sticker Kylian Mbappé - Phénoménal joueur de football français! ⚡', 8.00, 95,
+ (SELECT category_id FROM categories WHERE code = 'SPORTS'), 'STK-MBAPPE-001', 100,
+ '/uploads/products/main/Mbappe.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Ce n''est pas un bug', 'C''est une fonctionnalité surprenante.', 6.00, 98, '/stickers/itsnotabug.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Ronaldo', 'Sticker Cristiano Ronaldo - Légende du football! CR7 🏆', 8.00, 100,
+ (SELECT category_id FROM categories WHERE code = 'SPORTS'), 'STK-RONALDO-002', 120,
+ '/uploads/products/main/ronaldo.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Devster', 'Ils existent!', 5.00, 72, '/stickers/EatSleepCode.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Messi', 'Sticker Lionel Messi - Le magicien argentin! 🐐', 10.00, 99,
+ (SELECT category_id FROM categories WHERE code = 'SPORTS'), 'STK-MESSI-003', 150,
+ '/uploads/products/main/Messi.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('CodeSmasher', 'Développeur intrépide!', 7.50, 88, '/stickers/BreakingCode.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Virat Kohli', 'Sticker Virat Kohli - Le roi du cricket indien! 👑', 9.00, 99,
+ (SELECT category_id FROM categories WHERE code = 'SPORTS'), 'STK-VIRAT-004', 100,
+ '/uploads/products/main/Virat.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('CodeMate', 'Sans toi, je suis incomplet !', 2.00, 79, '/stickers/youaremycss.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+-- ==================== ANIME (3 produits) ====================
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Mbappé', 'Phénoménal!', 8.00, 55, '/stickers/Mbappe.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Naruto', 'Sticker Naruto Uzumaki - Le ninja le plus déterminé! 🍥', 6.00, 88,
+ (SELECT category_id FROM categories WHERE code = 'ANIME'), 'STK-NARUTO-005', 150,
+ '/uploads/products/main/Naruto.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('AstroChill', 'Cool pour la gravité!', 3.00, 52, '/stickers/CoolAstraunaut.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Goku', 'Sticker Son Goku - Le Saiyan légendaire! ⚡', 6.00, 92,
+ (SELECT category_id FROM categories WHERE code = 'ANIME'), 'STK-GOKU-006', 140,
+ '/uploads/products/main/Goku.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Ronaldo', 'Légendaire!', 8.00, 100, '/stickers/ronaldo.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Shin-Chan', 'Sticker Shin-Chan - L''enfant le plus espiègle! 😄', 5.00, 75,
+ (SELECT category_id FROM categories WHERE code = 'ANIME'), 'STK-SHINCHAN-007', 120,
+ '/uploads/products/main/Shinchan.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Ma conduite me fait peur aussi', 'Ils existent!', 5.00, 65, '/stickers/MyDrivingScaresMeToo.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+-- ==================== GAMING (2 produits) ====================
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Symbole du dragon à trois têtes', 'La force de la dynastie Targaryen', 9.00, 98, '/stickers/HouseOfTheDragonSymbol.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Jeu du calmar', 'Jouons', 5.00, 70, '/stickers/SquidGame.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Game Over', 'Sticker Game Over - Pour les vrais gamers! 🎮', 5.00, 70,
+ (SELECT category_id FROM categories WHERE code = 'GAMING'), 'STK-GAMEOVER-008', 100,
+ '/uploads/products/main/GameOver.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Shin-Chan', 'Espiègle!', 5.00, 70, '/stickers/Shinchan.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Squid Game', 'Sticker Squid Game - Jouons ensemble! 🔴⚪', 5.00, 92,
+ (SELECT category_id FROM categories WHERE code = 'GAMING'), 'STK-SQUIDGAME-009', 180,
+ '/uploads/products/main/SquidGame.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Game over', 'Jeu terminé!', 5.00, 50, '/stickers/GameOver.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+-- ==================== CODING (6 produits) ====================
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Messi', 'Magique!', 10.00, 99, '/stickers/Messi.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Développeur', 'Sticker Développeur - Assistant de code indispensable! 💻', 5.00, 85,
+ (SELECT category_id FROM categories WHERE code = 'CODING'), 'STK-DEV-010', 150,
+ '/uploads/products/main/developer.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Virat Kohli', 'Roi', 9.00, 99, '/stickers/Virat.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Break', 'Sticker Break - Prenons une pause et recommençons! ☕', 4.50, 60,
+ (SELECT category_id FROM categories WHERE code = 'CODING'), 'STK-BREAK-011', 100,
+ '/uploads/products/main/break.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Chat paresseux', 'Pas aujourd''hui', 6.00, 60, '/stickers/LazyCat.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Ce n''est pas un bug', 'Sticker - C''est une fonctionnalité surprise! 🐛', 6.00, 98,
+ (SELECT category_id FROM categories WHERE code = 'CODING'), 'STK-NOTABUG-012', 200,
+ '/uploads/products/main/itsnotabug.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Cerveau occupé', 'Penseur excessif!', 4.00, 50, '/stickers/OverThinker.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Eat Sleep Code', 'Sticker Devster - Le cycle de vie du développeur! 🔄', 5.00, 72,
+ (SELECT category_id FROM categories WHERE code = 'CODING'), 'STK-EATSLEEPC-013', 120,
+ '/uploads/products/main/EatSleepCode.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Naruto', 'Ninja!', 6.00, 60, '/stickers/Naruto.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Code Smasher', 'Sticker CodeSmasher - Développeur intrépide qui casse du code! 💪', 7.50, 88,
+ (SELECT category_id FROM categories WHERE code = 'CODING'), 'STK-CODESMASHER-014', 100,
+ '/uploads/products/main/BreakingCode.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Goku', 'Guerrier!', 6.00, 60, '/stickers/Goku.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('You Are My CSS', 'Sticker CodeMate - Sans toi, je suis incomplet! 💝', 2.00, 79,
+ (SELECT category_id FROM categories WHERE code = 'CODING'), 'STK-CSS-015', 180,
+ '/uploads/products/main/youaremycss.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Je vais bien', 'Persistant!', 6.00, 60, '/stickers/IamOkay.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+-- ==================== HUMOR (6 produits) ====================
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Huer', 'Désapprobation!', 6.00, 60, '/stickers/Boo.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Ma conduite me fait peur', 'Sticker humour - La vérité sur ma conduite! 🚗', 5.00, 65,
+ (SELECT category_id FROM categories WHERE code = 'HUMOR'), 'STK-DRIVING-016', 100,
+ '/uploads/products/main/MyDrivingScaresMeToo.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Sentiment EW', 'Dégoût!', 6.00, 60, '/stickers/EwFeelings.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Boo', 'Sticker Boo - Huées et désapprobation! 👎', 6.00, 60,
+ (SELECT category_id FROM categories WHERE code = 'HUMOR'), 'STK-BOO-017', 100,
+ '/uploads/products/main/Boo.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Soyez sauvage', 'Déchaîné!', 6.00, 60, '/stickers/BeWild.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Ew Feelings', 'Sticker - Les sentiments? Non merci! 😒', 6.00, 68,
+ (SELECT category_id FROM categories WHERE code = 'HUMOR'), 'STK-EWFEEL-018', 120,
+ '/uploads/products/main/EwFeelings.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Chat d''été', 'Moustaches de canicule', 6.00, 60, '/stickers/AestheticSummerCat.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Be Wild', 'Sticker Be Wild - Déchaîne-toi! 🦁', 6.00, 70,
+ (SELECT category_id FROM categories WHERE code = 'HUMOR'), 'STK-BEWILD-019', 110,
+ '/uploads/products/main/BeWild.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Sauvagerie', 'Votre opinion ne signifie rien', 6.00, 60, '/stickers/YourOpinonMeansNothing.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Your Opinion Means Nothing', 'Sticker Sauvagerie - Ton avis ne compte pas! 😎', 6.00, 75,
+ (SELECT category_id FROM categories WHERE code = 'HUMOR'), 'STK-OPINION-020', 130,
+ '/uploads/products/main/YourOpinonMeansNothing.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Gênant', 'Gênant et étrange', 6.00, 60, '/stickers/SociallyAwkward.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Socially Awkward', 'Sticker - Gênant et étrange, c''est moi! 😬', 6.00, 72,
+ (SELECT category_id FROM categories WHERE code = 'HUMOR'), 'STK-AWKWARD-021', 100,
+ '/uploads/products/main/SociallyAwkward.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Papillon bleu', 'Gracewing', 6.00, 60, '/stickers/Butterfly.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+-- ==================== ANIMALS (2 produits) ====================
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Aucune hésitation', 'Toujours prêt à prendre les choses en main!', 6.00, 60, '/stickers/IWon_tHesitateSticker.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Lazy Cat', 'Sticker Chat Paresseux - Pas aujourd''hui! 😴', 6.00, 78,
+ (SELECT category_id FROM categories WHERE code = 'ANIMALS'), 'STK-LAZYCAT-022', 140,
+ '/uploads/products/main/LazyCat.png', 1, CURRENT_TIMESTAMP, 'admin');
 
-INSERT INTO products (name, description, price, popularity, image_url, created_at, created_by, updated_at, updated_by)
-VALUES ('Wardgaze', 'Pouvoir protecteur du mauvais œil', 6.00, 60, '/stickers/EvilEye.png', CURRENT_TIMESTAMP, 'admin', NULL, NULL);
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Aesthetic Summer Cat', 'Sticker Chat d''été - Moustaches de canicule! ☀️', 6.00, 82,
+ (SELECT category_id FROM categories WHERE code = 'ANIMALS'), 'STK-SUMMERCAT-023', 120,
+ '/uploads/products/main/AestheticSummerCat.png', 1, CURRENT_TIMESTAMP, 'admin');
+
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Butterfly', 'Sticker Papillon bleu - Gracewing élégant! 🦋', 6.00, 80,
+ (SELECT category_id FROM categories WHERE code = 'ANIMALS'), 'STK-BUTTERFLY-024', 120,
+ '/uploads/products/main/Butterfly.png', 1, CURRENT_TIMESTAMP, 'admin');
+
+-- ==================== LIFESTYLE (4 produits) ====================
+
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Cool Astronaut', 'Sticker AstroChill - Cool pour la gravité! 🚀', 3.00, 65,
+ (SELECT category_id FROM categories WHERE code = 'LIFESTYLE'), 'STK-ASTRO-025', 100,
+ '/uploads/products/main/CoolAstraunaut.png', 1, CURRENT_TIMESTAMP, 'admin');
+
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Over Thinker', 'Sticker Cerveau occupé - Penseur excessif! 🧠', 4.00, 70,
+ (SELECT category_id FROM categories WHERE code = 'LIFESTYLE'), 'STK-OVERTHINKER-026', 110,
+ '/uploads/products/main/OverThinker.png', 1, CURRENT_TIMESTAMP, 'admin');
+
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('I Am Okay', 'Sticker Je vais bien - Persévérant malgré tout! 💪', 6.00, 68,
+ (SELECT category_id FROM categories WHERE code = 'LIFESTYLE'), 'STK-OKAY-027', 130,
+ '/uploads/products/main/IamOkay.png', 1, CURRENT_TIMESTAMP, 'admin');
+
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('I Won''t Hesitate', 'Sticker Sans hésitation - Toujours prêt! ⚡', 6.00, 74,
+ (SELECT category_id FROM categories WHERE code = 'LIFESTYLE'), 'STK-NOHESITATE-028', 100,
+ '/uploads/products/main/IWon_tHesitateSticker.png', 1, CURRENT_TIMESTAMP, 'admin');
+
+-- ==================== TV SHOWS (1 produit) ====================
+
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('House of the Dragon', 'Sticker Symbole Targaryen - La force de la dynastie! 🐉', 9.00, 98,
+ (SELECT category_id FROM categories WHERE code = 'TV_SHOWS'), 'STK-HOTD-029', 150,
+ '/uploads/products/main/HouseOfTheDragonSymbol.png', 1, CURRENT_TIMESTAMP, 'admin');
+
+-- ==================== OTHER (1 produit) ====================
+
+INSERT INTO products (name, description, price, popularity, category_id, sku, stock_quantity, image_url, is_active, created_at, created_by) VALUES
+('Evil Eye', 'Sticker Wardgaze - Pouvoir protecteur du mauvais œil! 🧿', 6.00, 76,
+ (SELECT category_id FROM categories WHERE code = 'OTHER'), 'STK-EVILEYE-030', 100,
+ '/uploads/products/main/EvilEye.png', 1, CURRENT_TIMESTAMP, 'admin');
+
 
 
 -- Insérer les catégories
-INSERT INTO categories (code, name, description, icon, display_order, created_by) VALUES
-('SPORTS', 'Sports', 'Stickers de sportifs et athlètes', '⚽', 1, 'admin'),
-('ANIME', 'Anime & Manga', 'Personnages d''animation japonaise', '🎌', 2, 'admin'),
-('GAMING', 'Jeux Vidéo', 'Culture gaming et jeux vidéo', '🎮', 3, 'admin'),
-('CODING', 'Code & Tech', 'Humour de développeurs', '💻', 4, 'admin'),
-('HUMOR', 'Humour', 'Stickers drôles et humoristiques', '😄', 5, 'admin'),
-('ANIMALS', 'Animaux', 'Animaux mignons et drôles', '🐱', 6, 'admin'),
-('LIFESTYLE', 'Style de Vie', 'Vie quotidienne et émotions', '🌟', 7, 'admin'),
-('TV_SHOWS', 'Séries TV', 'Personnages de séries populaires', '📺', 8, 'admin'),
-('OTHER', 'Autre', 'Stickers divers', '📦', 99, 'admin');
+INSERT INTO categories (code, name, description, icon, display_order, is_active, created_at, created_by) VALUES
+('SPORTS', 'Sports', 'Stickers de sportifs et athlètes célèbres', '⚽', 1, 1, CURRENT_TIMESTAMP, 'admin'),
+('ANIME', 'Anime & Manga', 'Personnages d''animation japonaise', '🎌', 2, 1, CURRENT_TIMESTAMP, 'admin'),
+('GAMING', 'Jeux Vidéo', 'Culture gaming et jeux vidéo', '🎮', 3, 1, CURRENT_TIMESTAMP, 'admin'),
+('CODING', 'Code & Tech', 'Humour et culture de développeurs', '💻', 4, 1, CURRENT_TIMESTAMP, 'admin'),
+('HUMOR', 'Humour', 'Stickers drôles et humoristiques', '😄', 5, 1, CURRENT_TIMESTAMP, 'admin'),
+('ANIMALS', 'Animaux', 'Animaux mignons et drôles', '🐱', 6, 1, CURRENT_TIMESTAMP, 'admin'),
+('LIFESTYLE', 'Style de Vie', 'Vie quotidienne et émotions', '🌟', 7, 1, CURRENT_TIMESTAMP, 'admin'),
+('TV_SHOWS', 'Séries TV', 'Personnages de séries populaires', '📺', 8, 1, CURRENT_TIMESTAMP, 'admin'),
+('OTHER', 'Autre', 'Stickers divers et variés', '📦', 99, 1, CURRENT_TIMESTAMP, 'admin');
 
 
 
