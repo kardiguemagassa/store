@@ -1,9 +1,9 @@
 # ========================================
 # APPLICATION CONFIGURATION
 # Store E-commerce Backend API
-# Version: 2.3 - FIXED
+# Version: 2.5 - FIXED UPLOAD PATH
 # Author: Kardigué
-# Date: 2025-10-27
+# Date: 2025-11-08
 # ========================================
 
 spring:
@@ -43,7 +43,7 @@ spring:
         order_updates: true
 
   # ========================================
-  # UPLOAD
+  # UPLOAD CONFIGURATION
   # ========================================
   servlet:
     multipart:
@@ -57,8 +57,18 @@ spring:
   messages:
     basename: messages
     encoding: UTF-8
+    default-locale: fr
+    cache-duration: 3600
     fallback-to-system-locale: false
-    cache-duration: 10s
+
+  # ========================================
+  # SERVER ENCODING
+  # ========================================
+  server:
+    servlet:
+      encoding:
+        charset: UTF-8
+        force: true
 
   # ========================================
   # EMAIL CONFIGURATION (Gmail)
@@ -146,7 +156,7 @@ info:
   app:
     name: ${spring.application.name}
     description: Backend Project for Store E-commerce application
-    version: 2.3.0
+    version: 2.5.0
     contact:
       email: dev_magassakara@gmail.com
       phone: '+652185505'
@@ -156,9 +166,63 @@ info:
 # STORE APPLICATION - CUSTOM CONFIGURATION
 # ========================================
 store:
+  # ✅ FILE UPLOAD CONFIGURATION (CORRECT - CHEMIN ABSOLU)
+  file:
+    # Répertoire de stockage des uploads
+    # ✅ Chemin absolu complet pour macOS
+    directory: /Users/kara/Documents/Developer/Projects/Fullstack/fullstack-react/application-store/eazystore-uploads
+
+    # Types MIME autorisés
+    allowed-types:
+      - image/jpeg
+      - image/png
+      - image/webp
+      - image/gif
+      - image/svg+xml
+
+    # Taille maximale par fichier (déjà défini dans spring.servlet.multipart)
+    max-file-size: 5MB
+    max-request-size: 10MB
+
+    # ✅ SECURITY CONFIGURATION
+    security:
+      cors:
+        allowed-origins:
+          - "http://localhost:3000"
+          - "http://localhost:5173"
+        allowed-methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+
+  # ✅ SPRING MULTIPART CONFIG (important pour les uploads)
+  spring:
+    servlet:
+      multipart:
+        max-file-size: 5MB
+        max-request-size: 10MB
+        enabled: true
+
+    # ✅ RESOURCE HANDLING
+    web:
+      resources:
+        add-mappings: true
+        static-locations:
+          - "file:${store.file.directory}/"
+          - "classpath:/static/"
+          - "classpath:/public/"
+
+  # ✅ LOGGING POUR DEBUG
+  logging:
+    level:
+      com.store.store.config: DEBUG
+      org.springframework.web.servlet.resource: DEBUG
+
   # JWT Configuration
   jwt:
-    secret: ${JWT_SECRET:VotreCleSuperSecreteQuiDoitEtreTresLongueEtComplexePourLaProductionAvecAuMoins256Bits}
+    secret: xK9mP2vL8qR4wT6yU1oN3sD5fG7hJ9kA0bC2dE4fG6hI8jK0lM2nO4pQ6rS8tU0v
     expiration-ms: 900000 # 15 minutes
     issuer: store-api
 
@@ -179,14 +243,6 @@ store:
   # CORS Configuration
   cors:
     allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
-
-  # Configuration Upload depuis spring.file
-  file:
-    upload-dir: ./uploads
-    allowed-types:
-      - image/jpeg
-      - image/png
-      - image/webp
 
   # Scheduler Configuration
   scheduler:
