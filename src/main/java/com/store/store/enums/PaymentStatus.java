@@ -1,17 +1,32 @@
 package com.store.store.enums;
 
+import lombok.Getter;
+
+/**
+ * @author Kardigué
+ * @version 4.0 - Production Ready
+ * @since 2025-01-06
+ */
+@Getter
 public enum PaymentStatus {
-    PAID("Payé"),
-    PENDING("En attente"),
-    FAILED("Échoué");
 
-    private final String displayName;
+    PAID,
+    PENDING,
+    FAILED;
 
-    PaymentStatus(String displayName) {
-        this.displayName = displayName;
+    public String getMessageKey() {
+        return "payment.status." + name().toLowerCase();
     }
 
-    public String getDisplayName() {
-        return displayName;
+    public boolean isConfirmed() {
+        return this == PAID;
+    }
+
+    public boolean isFailed() {
+        return this == FAILED;
+    }
+
+    public boolean isPending() {
+        return this == PENDING;
     }
 }
