@@ -1,15 +1,11 @@
 package com.store.store.service;
 
-import com.store.store.dto.CategoryDto;
+import com.store.store.dto.category.CategoryDto;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 /**
- * Interface defining the contract for managing product categories.
- * Provides methods to perform CRUD operations, retrieve category information,
- * and manage associated resources such as category icons.
- *
  * @author Kardigué
  * @version 3.0 (JWT + Refresh Token + Cookies)
  * @since 2025-11-01

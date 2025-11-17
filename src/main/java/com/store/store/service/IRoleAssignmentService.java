@@ -1,7 +1,7 @@
 package com.store.store.service;
 
-import com.store.store.dto.CustomerWithRolesDto;
-import com.store.store.dto.RegisterRequestDto;
+import com.store.store.dto.user.CustomerWithRolesDto;
+import com.store.store.dto.auth.RegisterRequestDto;
 import com.store.store.entity.Role;
 import com.store.store.enums.RoleType;
 import org.springframework.data.domain.Page;
@@ -10,8 +10,6 @@ import org.springframework.data.domain.Pageable;
 import java.util.Set;
 
 /**
- * Interface for managing the assignment and management of user roles.
- *
  * @author Kardigué
  * @version 3.0
  * @since 2025-11-01

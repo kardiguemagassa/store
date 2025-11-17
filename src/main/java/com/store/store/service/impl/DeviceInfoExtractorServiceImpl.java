@@ -1,34 +1,32 @@
 package com.store.store.service.impl;
 
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 /**
- * Service implementation responsible for extracting device information from a given User-Agent string.
- * The service parses the User-Agent to determine the operating system, browser,
- * and device type to provide meaningful insights about the client device.
- *
  * @author Kardigué
- * @version 3.0 (JWT + Refresh Token + Cookies)
- * @since 2025-11-01
+ * @version 4.0 - Production Ready
+ * @since 2025-01-06
  */
 @Slf4j
 @Service
 public class DeviceInfoExtractorServiceImpl {
 
-    /**
-     * Extracts device information such as operating system, browser, and device type
-     * from a given User-Agent string.
-     *
-     * @param userAgent the User-Agent string used to identify the device's operating system,
-     *                  browser, and type. May be null or empty.
-     * @return a formatted string containing the operating system, browser, and device type,
-     *         separated by hyphens, e.g., "OS - Browser - DeviceType".
-     *         Returns "Unknown Device" if extraction fails, or null if the input User-Agent
-     *         is null or empty.
-     */
+    // CONSTANTES
+
+    private static final String UNKNOWN_DEVICE = "Unknown Device";
+    private static final String UNKNOWN_OS = "Unknown OS";
+    private static final String UNKNOWN_BROWSER = "Unknown Browser";
+    private static final String DEVICE_TYPE_MOBILE = "Mobile";
+    private static final String DEVICE_TYPE_TABLET = "Tablet";
+    private static final String DEVICE_TYPE_DESKTOP = "Desktop";
+
+    // EXTRACTION COMPLÈTE
+
     public String extractDeviceInfo(String userAgent) {
         if (userAgent == null || userAgent.isEmpty()) {
+            log.debug("Empty User-Agent provided, skipping device extraction");
             return null;
         }
 
@@ -37,105 +35,87 @@ public class DeviceInfoExtractorServiceImpl {
             String browser = extractBrowser(userAgent);
             String deviceType = extractDeviceType(userAgent);
 
-            return String.format("%s - %s - %s", os, browser, deviceType);
+            String deviceInfo = String.format("%s - %s - %s", os, browser, deviceType);
+            log.debug("Device info extracted: {}", deviceInfo);
+
+            return deviceInfo;
+
         } catch (Exception e) {
             log.warn("Failed to extract device info from User-Agent: {}", e.getMessage());
-            return "Unknown Device";
+            return UNKNOWN_DEVICE;
         }
     }
 
-    /**
-     * Extracts the operating system name and version from the provided User-Agent string.
-     *
-     * @param userAgent the User-Agent string used to identify the operating system.
-     *                  It can include details about the device's OS such as "Windows NT 10.0",
-     *                  "Mac OS X 10_15_7", "Android 13", etc. May be null or empty.
-     * @return a string containing the extracted operating system name and version,
-     *         such as "Windows 10", "macOS Catalina", or "Android 13".
-     *         Returns "Unknown OS" if the operating system cannot be determined,
-     *         or null if the input User-Agent is null or empty.
-     */
+    // EXTRACTION - SYSTÈME D'EXPLOITATION
+
     private String extractOS(String userAgent) {
+        // Windows
         if (userAgent.contains("Windows NT 10.0")) return "Windows 10";
         if (userAgent.contains("Windows NT 6.3")) return "Windows 8.1";
         if (userAgent.contains("Windows NT 6.2")) return "Windows 8";
         if (userAgent.contains("Windows NT 6.1")) return "Windows 7";
         if (userAgent.contains("Windows")) return "Windows";
 
+        // macOS
         if (userAgent.contains("Mac OS X")) {
-            // Extraire la version (ex: "Mac OS X 10_15_7")
             if (userAgent.contains("Mac OS X 10_15")) return "macOS Catalina";
             if (userAgent.contains("Mac OS X 11")) return "macOS Big Sur";
             if (userAgent.contains("Mac OS X 12")) return "macOS Monterey";
             if (userAgent.contains("Mac OS X 13")) return "macOS Ventura";
             if (userAgent.contains("Mac OS X 14")) return "macOS Sonoma";
+            if (userAgent.contains("Mac OS X 15")) return "macOS Sequoia";
             return "macOS";
         }
 
+        // Android (avec extraction de version)
         if (userAgent.contains("Android")) {
-            // Extraire la version (ex: "Android 13")
-            String[] parts = userAgent.split("Android ");
-            if (parts.length > 1) {
-                String version = parts[1].split(";")[0].trim();
-                return "Android " + version;
+            try {
+                String[] parts = userAgent.split("Android ");
+                if (parts.length > 1) {
+                    String version = parts[1].split(";")[0].trim();
+                    return "Android " + version;
+                }
+            } catch (Exception e) {
+                log.debug("Failed to extract Android version: {}", e.getMessage());
             }
             return "Android";
         }
 
+        // iOS
         if (userAgent.contains("iPhone") || userAgent.contains("iPad")) {
-            // Extraire la version iOS (ex: "OS 17_0")
             if (userAgent.contains("OS 17")) return "iOS 17";
             if (userAgent.contains("OS 16")) return "iOS 16";
             if (userAgent.contains("OS 15")) return "iOS 15";
             return "iOS";
         }
 
-        if (userAgent.contains("Linux")) return "Linux";
+        // Linux
         if (userAgent.contains("Ubuntu")) return "Ubuntu";
         if (userAgent.contains("CrOS")) return "Chrome OS";
+        if (userAgent.contains("Linux")) return "Linux";
 
-        return "Unknown OS";
+        return UNKNOWN_OS;
     }
 
-    /**
-     * Extracts the browser name based on the given User-Agent string.
-     * This method analyzes the User-Agent to determine the browser type,
-     * including specific cases such as distinguishing between desktop and mobile browsers.
-     *
-     * @param userAgent the User-Agent string used to identify the browser. It may include
-     *                  details like browser name, version, and whether it is mobile or desktop.
-     *                  Can be null or empty.
-     * @return a string representing the browser name. Possible values include:
-     *         "Edge", "Chrome", "Chrome Mobile", "Firefox", "Firefox Mobile", "Safari",
-     *         "Safari Mobile", "Opera", "Internet Explorer", or "Unknown Browser".
-     *         Returns "Unknown Browser" if the browser cannot be determined,
-     *         or null if the input User-Agent is null or empty.
-     */
+    // EXTRACTION - NAVIGATEUR
+
     private String extractBrowser(String userAgent) {
-        // Ordre important : vérifier Edge avant Chrome (Edge contient "Chrome")
+        // Ordre important : Edge avant Chrome
         if (userAgent.contains("Edg/")) {
             return "Edge";
         }
 
         if (userAgent.contains("Chrome/") && !userAgent.contains("Edg")) {
-            if (userAgent.contains("Mobile")) {
-                return "Chrome Mobile";
-            }
-            return "Chrome";
+            return userAgent.contains("Mobile") ? "Chrome Mobile" : "Chrome";
         }
 
         if (userAgent.contains("Firefox/")) {
-            if (userAgent.contains("Mobile")) {
-                return "Firefox Mobile";
-            }
-            return "Firefox";
+            return userAgent.contains("Mobile") ? "Firefox Mobile" : "Firefox";
         }
 
+        // Safari APRÈS Chrome (Chrome contient "Safari")
         if (userAgent.contains("Safari/") && !userAgent.contains("Chrome")) {
-            if (userAgent.contains("Mobile")) {
-                return "Safari Mobile";
-            }
-            return "Safari";
+            return userAgent.contains("Mobile") ? "Safari Mobile" : "Safari";
         }
 
         if (userAgent.contains("Opera/") || userAgent.contains("OPR/")) {
@@ -146,57 +126,37 @@ public class DeviceInfoExtractorServiceImpl {
             return "Internet Explorer";
         }
 
-        return "Unknown Browser";
+        return UNKNOWN_BROWSER;
     }
 
-    /**
-     * Determines the type of device (Mobile, Tablet, or Desktop) based on the provided User-Agent string.
-     *
-     * @param userAgent the User-Agent string used to identify the device type. It may include keywords
-     *                  such as "Mobile", "Android", "iPhone", "iPad", or "Tablet". Can be null or empty.
-     * @return a string representing the device type. Possible return values are:
-     *         - "Mobile" if the User-Agent contains indicators of a mobile device.
-     *         - "Tablet" if the User-Agent contains indicators of a tablet device.
-     *         - "Desktop" if none of the mobile or tablet indicators are present.
-     *         Returns "Desktop" by default if no specific device indicators are found.
-     */
+    // EXTRACTION - TYPE D'APPAREIL
+
     private String extractDeviceType(String userAgent) {
         // Mobile
-        if (userAgent.contains("Mobile") ||
+        if (userAgent.contains(DEVICE_TYPE_MOBILE) ||
                 userAgent.contains("Android") ||
                 userAgent.contains("iPhone")) {
-            return "Mobile";
+            return DEVICE_TYPE_MOBILE;
         }
 
         // Tablet
         if (userAgent.contains("iPad") ||
-                userAgent.contains("Tablet")) {
-            return "Tablet";
+                userAgent.contains(DEVICE_TYPE_TABLET)) {
+            return DEVICE_TYPE_TABLET;
         }
 
         // Desktop par défaut
-        return "Desktop";
+        return DEVICE_TYPE_DESKTOP;
     }
 
-    /**
-     * Extracts the browser name from the given User-Agent string.
-     * This method removes the "Mobile" suffix from the browser name
-     * if present to provide a simplified browser name.
-     *
-     * @param userAgent the User-Agent string used to identify the browser.
-     *                  It may include details like browser name, version,
-     *                  or device type. Can be null or empty.
-     * @return a simplified string representing the browser name. Possible values include:
-     *         "Edge", "Chrome", "Firefox", "Safari", "Opera", "Internet Explorer", etc.
-     *         Returns "Unknown" if the input is null, empty, or the browser cannot be determined.
-     */
+    // UTILITAIRES PUBLICS
+
     public String extractBrowserName(String userAgent) {
         if (userAgent == null || userAgent.isEmpty()) {
             return "Unknown";
         }
 
         String browser = extractBrowser(userAgent);
-        // Enlever "Mobile" du nom pour comparaison
         return browser.replace(" Mobile", "");
     }
 }
