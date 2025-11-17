@@ -23,11 +23,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.password.HaveIBeenPwnedRestApiPasswordChecker;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CompositeFilter;
 
 import java.util.Arrays;
 import java.util.List;
@@ -55,52 +57,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    /**
-     * Service de chargement des détails utilisateur depuis la BDD.
-     * <p>Utilisé par le {@link DaoAuthenticationProvider} pour récupérer
-     * les informations d'un utilisateur lors de l'authentification.
-     */
     private final CustomerUserDetailsService customerUserDetailsService;
-
-    /**
-     * Filtre JWT qui intercepte chaque requête HTTP.
-     * Responsabilités :
-     * Extraire le token JWT depuis le cookie "accessToken"
-     * Valider le token (signature, expiration, etc.)
-     * Authentifier l'utilisateur dans le SecurityContext
-     * Positionné AVANT {@link UsernamePasswordAuthenticationFilter}dans la chaîne de filtres.
-     */
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
-    /**
-     * Point d'entrée pour gérer les erreurs d'authentification (401).
-     * Déclenché automatiquement par Spring Security quand :
-     * Aucun token JWT n'est présent
-     * Le token JWT est expiré
-     * Le token JWT est invalide
-     * Retourne une réponse JSON standardisée {@link ApiResponse}
-     * avec message localisé via {@link com.store.store.service.impl.MessageServiceImpl}.
-     *
-     * @see com.store.store.security.JwtAuthenticationEntryPoint#commence
-     */
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-
-    /**
-     * Liste des chemins d'endpoints publics (sans authentification requise).
-     * Injectée depuis {@link PublicPathsConfig} qui centralise
-     * tous les endpoints publics de l'application.
-     * Exemples : /api/v1/auth/**, /api/v1/products/**, /api/v1/contacts
-     */
     private final List<String> publicPaths;
+    private final CsrfCookieFilter csrfCookieFilter;
 
-    /**
-     * Origines CORS autorisées (depuis application.yml).
-     * Exemple de configuration :
-     * store:
-     *   cors:
-     *     allowed-origins: http://localhost:3000,http://localhost:4200
-     * AMAIS utiliser "*" avec credentials:true !
-     */
     @Value("${store.cors.allowed-origins}")
     private String allowedOrigins;
 
@@ -127,8 +89,45 @@ public class SecurityConfig {
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(requestHandler)
                         // Pas de CSRF pour les endpoints publics (GET sans modification d'état)
-                        .ignoringRequestMatchers(publicPaths.toArray(new String[0]))
+                        //.ignoringRequestMatchers(publicPaths.toArray(new String[0]))
+                        .ignoringRequestMatchers(
+                                // Auth endpoints
+                                request -> request.getMethod().equals("POST") &&
+                                        request.getServletPath().equals("/api/v1/auth/login"),
+                                request -> request.getMethod().equals("POST") &&
+                                        request.getServletPath().equals("/api/v1/auth/register"),
+                                request -> request.getMethod().equals("POST") &&
+                                        request.getServletPath().equals("/api/v1/auth/refresh"),
+                                request -> request.getMethod().equals("POST") &&
+                                        request.getServletPath().equals("/api/v1/auth/logout"),
+
+                                // Products GET endpoints
+                                request -> request.getMethod().equals("GET") &&
+                                        request.getServletPath().equals("/api/v1/products"),
+                                request -> request.getMethod().equals("GET") &&
+                                        request.getServletPath().equals("/api/v1/products/search"),
+                                request -> request.getMethod().equals("GET") &&
+                                        request.getServletPath().equals("/api/v1/products/featured"),
+                                request -> request.getMethod().equals("GET") &&
+                                        request.getServletPath().equals("/api/v1/products/on-sale"),
+                                request -> request.getMethod().equals("GET") &&
+                                        request.getServletPath().startsWith("/api/v1/products/category/"),
+                                request -> request.getMethod().equals("GET") &&
+                                        request.getServletPath().matches("/api/v1/products/\\d+"),
+                                request -> request.getMethod().equals("GET") &&
+                                        request.getServletPath().matches("/api/v1/products/\\d+/image/bytes"),
+
+                                // Other public endpoints
+                                request -> request.getServletPath().startsWith("/api/v1/contacts"),
+                                request -> request.getServletPath().startsWith("/swagger-ui"),
+                                request -> request.getServletPath().startsWith("/v3/api-docs"),
+                                request -> request.getServletPath().startsWith("/store/actuator/health"),
+                                request -> request.getServletPath().equals("/store/actuator/info"),
+                                request -> request.getServletPath().startsWith("/uploads")
+                        )
                 )
+
+                .addFilterAfter(csrfCookieFilter, BasicAuthenticationFilter.class)
 
                 // CORS - Cross-Origin Resource Sharing
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -148,17 +147,23 @@ public class SecurityConfig {
                 // AUTHORIZATION RULES - Règles par endpoint
                 .authorizeHttpRequests(auth -> auth
                         // Endpoints publics (sans authentification)
+                        // 1. CHEMINS PUBLICS (PAS D'AUTHENTIFICATION)
                         .requestMatchers(publicPaths.toArray(new String[0])).permitAll()
+
+                        // 2. FICHIERS STATIQUES ET UPLOADS (PUBLIC)
+                        .requestMatchers("/uploads/**", "/products/**", "/static/**", "/images/**").permitAll()
+
+                        // 3. SWAGGER/DOCS (PUBLIC EN DEV)
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**").permitAll()
+
+                        // 4. ACTUATOR (PUBLIC - HEALTH ONLY)
+                        .requestMatchers("/store/actuator/health", "/store/actuator/info").permitAll()
 
                         // Endpoints admin (ROLE_ADMIN requis)
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
                         // Actuator (monitoring) - ROLE_ADMIN requis
                         .requestMatchers("/store/actuator/**").hasRole("ADMIN")
-
-                        // Swagger UI - Public (développement)
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**")
-                        .permitAll()
 
                         // Tous les autres endpoints - Authentification requise
                         .anyRequest().hasAnyRole("USER", "ADMIN"))
