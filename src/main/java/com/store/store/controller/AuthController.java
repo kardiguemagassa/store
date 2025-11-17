@@ -439,9 +439,7 @@ public class AuthController {
         return ResponseEntity.ok(apiResponse);
     }
 
-    // ========================================================================
     // MÉTHODES PRIVÉES - SÉCURITÉ
-    // ========================================================================
 
     /**
      * @param refreshToken Token compromis
