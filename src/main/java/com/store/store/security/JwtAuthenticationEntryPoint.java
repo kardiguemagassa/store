@@ -78,10 +78,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
      * @see HttpServletResponse
      */
     @Override
-    public void commence(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            AuthenticationException authException) throws IOException {
+    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException {
 
         // Extraction des informations de la requête
         final String requestURI = request.getRequestURI();
