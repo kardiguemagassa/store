@@ -1,6 +1,5 @@
 package com.store.store.config;
 
-import com.store.store.dto.common.ApiResponse;
 import com.store.store.security.CustomerUserDetailsService;
 import com.store.store.security.JwtAuthenticationEntryPoint;
 import com.store.store.security.JwtAuthenticationFilter;
@@ -29,7 +28,6 @@ import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CompositeFilter;
 
 import java.util.Arrays;
 import java.util.List;

@@ -30,7 +30,7 @@ public class ApiResponse<T> {
 
     @Schema(description = "Indicateur de succès", example = "true")
     @Builder.Default
-    private Boolean success = true;
+    private Boolean success = (Boolean.TRUE);
 
     @Schema(description = "Message descriptif", example = "Produit créé avec succès")
     private String message;
@@ -67,7 +67,7 @@ public class ApiResponse<T> {
      */
     public static <T> ApiResponse<T> success(String localizedMessage, T data) {
         return ApiResponse.<T>builder()
-                .success(true)
+                .success(Boolean.TRUE)
                 .message(localizedMessage)
                 .statusCode(HttpStatus.OK.value())
                 .timestamp(LocalDateTime.now())
@@ -87,7 +87,7 @@ public class ApiResponse<T> {
      */
     public static <T> ApiResponse<T> created(String localizedMessage, T data) {
         return ApiResponse.<T>builder()
-                .success(true)
+                .success(Boolean.TRUE)
                 .message(localizedMessage)
                 .statusCode(HttpStatus.CREATED.value())
                 .timestamp(LocalDateTime.now())
@@ -100,7 +100,7 @@ public class ApiResponse<T> {
      */
     public static <T> ApiResponse<T> noContent(String localizedMessage) {
         return ApiResponse.<T>builder()
-                .success(true)
+                .success(Boolean.TRUE)
                 .message(localizedMessage)
                 .statusCode(HttpStatus.NO_CONTENT.value())
                 .timestamp(LocalDateTime.now())
@@ -111,10 +111,9 @@ public class ApiResponse<T> {
     /**
      * Crée une réponse d'erreur.
      */
-    public static <T> ApiResponse<T> error(HttpStatus httpStatus, String errorCode,
-                                           String localizedMessage, String path) {
+    public static <T> ApiResponse<T> error(HttpStatus httpStatus, String errorCode, String localizedMessage, String path) {
         return ApiResponse.<T>builder()
-                .success(false)
+                .success(Boolean.FALSE)
                 .message(localizedMessage)
                 .statusCode(httpStatus.value())
                 .errorCode(errorCode)
@@ -129,7 +128,7 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> validationError(String errorCode, String localizedMessage,
                                                      String path, Map<String, String> errors) {
         return ApiResponse.<T>builder()
-                .success(false)
+                .success(Boolean.FALSE)
                 .message(localizedMessage)
                 .statusCode(HttpStatus.BAD_REQUEST.value())
                 .errorCode(errorCode)
@@ -145,7 +144,7 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> serverError(String errorCode, String localizedMessage,
                                                  String path, String traceId) {
         return ApiResponse.<T>builder()
-                .success(false)
+                .success(Boolean.FALSE)
                 .message(localizedMessage)
                 .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .errorCode(errorCode)
@@ -166,7 +165,7 @@ public class ApiResponse<T> {
      */
     public static <T> ApiResponse<T> internalError(String errorCode, String message, String path) {
         return ApiResponse.<T>builder()
-                .success(false)
+                .success(Boolean.FALSE)
                 .message(message)
                 .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .errorCode(errorCode)

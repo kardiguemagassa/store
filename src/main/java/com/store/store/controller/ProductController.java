@@ -349,18 +349,25 @@ public class ProductController {
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "50") @Min(1) int size,
             @RequestParam(defaultValue = "NAME") ProductSearchCriteria.SortBy sortBy,
-            @RequestParam(defaultValue = "ASC") ProductSearchCriteria.SortDirection sortDirection) {
+            @RequestParam(defaultValue = "ASC") ProductSearchCriteria.SortDirection sortDirection,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Boolean activeOnly) {
 
         log.info("GET /api/v1/products/admin/paginated - page: {}, size: {}", page, size);
 
         ProductSearchCriteria criteria = ProductSearchCriteria.builder()
-                .activeOnly(false)
+                .searchQuery(query)
+                .categoryCode(category)
+                .activeOnly(activeOnly)
                 .sortBy(sortBy)
                 .sortDirection(sortDirection)
                 .build();
 
         Pageable pageable = PageRequest.of(page, size);
         Page<ProductDto> products = productService.searchProducts(criteria, pageable);
+
+        log.info("📦 Résultat: {} produits sur {} pages", products.getTotalElements(), products.getTotalPages());
 
         return ResponseEntity.ok(products);
     }
@@ -390,7 +397,7 @@ public class ProductController {
 
     @Operation(summary = "[ADMIN] Créer un nouveau produit")
     @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/create", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ProductDto> createProduct(
             @Valid @RequestBody ProductDto productDto) {
 
@@ -401,6 +408,28 @@ public class ProductController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(createdProduct);
+    }
+
+    @PostMapping(value = "/create-with-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ProductDto> createProductWithImage(
+            @RequestPart("product") @Valid ProductDto productDto,
+            @RequestPart(value = "image", required = false) MultipartFile imageFile)
+            throws IOException {
+
+        log.info("Creating product with image: {}", productDto.getName());
+
+        // 1. Créer le produit
+        ProductDto createdProduct = productService.createProduct(productDto);
+
+        // 2. Uploader l'image si présente
+        if (imageFile != null && !imageFile.isEmpty()) {
+            String imageUrl = productService.uploadProductImage(
+                    createdProduct.getProductId(), imageFile);
+            createdProduct.setImageUrl(imageUrl);
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdProduct);
     }
 
 

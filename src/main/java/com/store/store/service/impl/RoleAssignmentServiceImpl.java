@@ -15,10 +15,13 @@ import com.store.store.service.IRoleAssignmentService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -38,8 +41,25 @@ public class RoleAssignmentServiceImpl implements IRoleAssignmentService {
     private final RoleRepository roleRepository;
     private final ExceptionFactory exceptionFactory;
     private final MessageServiceImpl messageService;
+    private final CacheManager cacheManager;
 
-    // ATTRIBUTION INITIALE DES RÔLES
+
+    // CONSULTATION DES UTILISATEURS - AVEC CACHE INVALIDÉ
+    @Override
+    public Page<CustomerWithRolesDto> getAllCustomersWithRoles(Pageable pageable) {
+        // S'ASSURER QUE LE CACHE EST FRAIS EN INVALIDANT AVANT LECTURE
+        evictRolesCache();
+
+        Page<Customer> customers = customerRepository.findAll(pageable);
+
+        return customers.map(customer -> CustomerWithRolesDto.builder()
+                .customerId(customer.getCustomerId())
+                .name(customer.getName())
+                .email(customer.getEmail())
+                .roles(customer.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet()))
+                .createdAt(customer.getCreatedAt())
+                .build());
+    }
 
     @Override
     public Set<Role> determineInitialRoles(RegisterRequestDto registerRequest) {
@@ -52,47 +72,7 @@ public class RoleAssignmentServiceImpl implements IRoleAssignmentService {
         return roles;
     }
 
-    // PROMOTION VERS ADMIN
-
-    @Override
-    public void promoteToAdmin(Long userId, String promotedByAdmin) {
-        // Récupération de l'utilisateur
-        Customer customer = customerRepository.findById(userId)
-                .orElseThrow(() -> exceptionFactory.resourceNotFound("User", "id", userId.toString()));
-
-        // Vérification : pas déjà ADMIN
-        if (customer.isAdmin()) {
-            log.warn("User {} is already ADMIN", customer.getEmail());
-            //  Utilisation de messageService
-            throw exceptionFactory.businessError(messageService.getMessage("error.role.user.already.admin"));
-        }
-
-        // Attribution du rôle ADMIN
-        Role adminRole = getRole(RoleType.ROLE_ADMIN);
-        customer.getRoles().add(adminRole);
-
-        customerRepository.save(customer);
-        log.info("User {} promoted to ADMIN by {}", customer.getEmail(), promotedByAdmin);
-    }
-
-    // RÉTROGRADATION DEPUIS ADMIN
-
-    @Override
-    public void demoteFromAdmin(Long userId, String demotedByAdmin) {
-        // Récupération de l'utilisateur
-        Customer customer = customerRepository.findById(userId)
-                .orElseThrow(() -> exceptionFactory.resourceNotFound("User", "id", userId.toString()));
-
-        // Retrait du rôle ADMIN
-        Role adminRole = getRole(RoleType.ROLE_ADMIN);
-        customer.getRoles().remove(adminRole);
-
-        customerRepository.save(customer);
-        log.info("ADMIN privileges removed from user {} by {}", customer.getEmail(), demotedByAdmin);
-    }
-
-    // ATTRIBUTION MANUELLE DE RÔLE
-
+    // ATTRIBUTION MANUELLE DE RÔLE - AVEC INVALIDATION CACHE
     @Override
     public void assignRole(Long customerId, RoleType roleType) {
         // Récupération de l'utilisateur
@@ -117,11 +97,50 @@ public class RoleAssignmentServiceImpl implements IRoleAssignmentService {
         customer.getRoles().add(role);
         customerRepository.save(customer);
 
+        // INVALIDATION EXPLICITE DU CACHE ROLES
+        evictRolesCache();
+
         log.info("Role {} assigned to customer {} ({})", roleType, customerId, customer.getEmail());
     }
 
-    // RETRAIT DE RÔLE
+    // PROMOTION VERS ADMIN
+    @Override
+    public void promoteToAdmin(Long userId, String promotedByAdmin) {
+        // Récupération de l'utilisateur
+        Customer customer = customerRepository.findById(userId)
+                .orElseThrow(() -> exceptionFactory.resourceNotFound("User", "id", userId.toString()));
 
+        // Vérification : pas déjà ADMIN
+        if (customer.isAdmin()) {
+            log.warn("User {} is already ADMIN", customer.getEmail());
+            //  Utilisation de messageService
+            throw exceptionFactory.businessError(messageService.getMessage("error.role.user.already.admin"));
+        }
+
+        // Attribution du rôle ADMIN
+        Role adminRole = getRole(RoleType.ROLE_ADMIN);
+        customer.getRoles().add(adminRole);
+
+        customerRepository.save(customer);
+        log.info("User {} promoted to ADMIN by {}", customer.getEmail(), promotedByAdmin);
+    }
+
+    // RÉTROGRADATION DEPUIS ADMIN
+    @Override
+    public void demoteFromAdmin(Long userId, String demotedByAdmin) {
+        // Récupération de l'utilisateur
+        Customer customer = customerRepository.findById(userId)
+                .orElseThrow(() -> exceptionFactory.resourceNotFound("User", "id", userId.toString()));
+
+        // Retrait du rôle ADMIN
+        Role adminRole = getRole(RoleType.ROLE_ADMIN);
+        customer.getRoles().remove(adminRole);
+
+        customerRepository.save(customer);
+        log.info("ADMIN privileges removed from user {} by {}", customer.getEmail(), demotedByAdmin);
+    }
+
+    // RETRAIT DE RÔLE - VERSION AVEC INVALIDATION CACHE
     @Override
     public void removeRole(Long customerId, RoleType roleType) {
         // Protection du ROLE_USER obligatoire
@@ -133,38 +152,40 @@ public class RoleAssignmentServiceImpl implements IRoleAssignmentService {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> exceptionFactory.resourceNotFound("User", "id", customerId.toString()));
 
-        // Retrait du rôle
-        Role role = getRole(roleType);
-        customer.getRoles().remove(role);
+        // Vérification explicite que le rôle existe
+        boolean roleRemoved = customer.getRoles().removeIf(role -> role.getName().equals(roleType));
+
+        if (!roleRemoved) {
+            throw exceptionFactory.businessError(messageService.getMessage("error.role.not.assigned", roleType.getDisplayName()));
+        }
+
         customerRepository.save(customer);
 
-        log.info("Role {} removed from customer {}", roleType, customerId);
+        // INVALIDATION EXPLICITE DU CACHE ROLES
+        evictRolesCache();
+
+        log.info("Role {} successfully removed from customer {}", roleType, customerId);
     }
 
-    // CONSULTATION DES UTILISATEURS
-
-    @Override
-    public Page<CustomerWithRolesDto> getAllCustomersWithRoles(Pageable pageable) {
-        Page<Customer> customers = customerRepository.findAll(pageable);
-
-        return customers.map(customer -> CustomerWithRolesDto.builder()
-                .customerId(customer.getCustomerId())
-                .name(customer.getName())
-                .email(customer.getEmail())
-                .roles(customer.getRoles().stream()
-                        .map(role -> role.getName().name())
-                        .collect(Collectors.toSet()))
-                .build());
+    // MÉTHODE D'INVALIDATION DU CACHE ROLES
+    private void evictRolesCache() {
+        try {
+            Cache rolesCache = cacheManager.getCache("roles");
+            if (rolesCache != null) {
+                rolesCache.clear();
+                log.debug("Roles cache evicted successfully");
+            }
+        } catch (Exception e) {
+            log.warn(" Could not evict roles cache: {}", e.getMessage());
+        }
     }
 
     // MÉTHODES PRIVÉES - UTILITAIRES
-
     private Role getRole(RoleType roleType) {
         return roleRepository.findByName(roleType).orElseThrow(() -> exceptionFactory.missingRole(roleType.name()));
     }
 
     // VALIDATION - HIÉRARCHIE DES RÔLES
-
     private void validateRoleHierarchy(Customer customer, RoleType newRole) {
         switch (newRole) {
             case ROLE_EMPLOYEE:

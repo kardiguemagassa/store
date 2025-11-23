@@ -40,7 +40,6 @@ public class ContactServiceImpl implements IContactService {
     private final MessageServiceImpl messageService;
 
     // OPÉRATIONS CRUD
-
     @Override
     @Transactional
     public boolean saveContact(ContactRequestDto contactRequestDto) {
@@ -126,7 +125,6 @@ public class ContactServiceImpl implements IContactService {
     }
 
     // MÉTHODES DE VALIDATION MÉTIER
-
     private void validateUpdateParameters(Long contactId, String status) {
         // Validation de l'ID
         if (contactId == null || contactId <= 0) {
