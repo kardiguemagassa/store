@@ -6,12 +6,14 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Set;
 
 @Data
 @Builder
+@Getter
 public class CustomerWithRolesDto {
     private Long customerId;
 
@@ -27,7 +29,7 @@ public class CustomerWithRolesDto {
     @NotNull(message = "{validation.required}")
     private Set<String> roles;
 
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @NotNull(message = "{validation.required}")
     private Boolean isActive;

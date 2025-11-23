@@ -10,21 +10,17 @@ public class ApplicationConstants {
     public static final String JWT_SECRET_DEFAULT_VALUE = "jxgEQeXHuPq8VdbyYFNkANdudQ53YUn4";
     public static final String JWT_HEADER = "Authorization";
 
-    public static final String  ORDER_STATUS_CONFIRMED = "CONFIRMÉ";
-    public static final String  ORDER_STATUS_CREATED = "CRÉÉ";
-    public static final String ORDER_STATUS_SHIPPED = "EXPÉDIÉE";
-    public static final String ORDER_STATUS_DELIVERED = "LIVRÉ";
-    public static final String  ORDER_STATUS_CANCELLED = "ANNULÉ";
-    public static final String ORDER_STATUS_PENDING = "EN ATTENTE";
+    public static final String ORDER_STATUS_CREATED = "CREATED";
+    public static final String ORDER_STATUS_CONFIRMED = "CONFIRMED";
+    public static final String ORDER_STATUS_SHIPPED = "SHIPPED";
+    public static final String ORDER_STATUS_DELIVERED = "DELIVERED";
+    public static final String ORDER_STATUS_CANCELLED = "CANCELLED";
+    public static final String ORDER_STATUS_PENDING = "PENDING";
+
     public static final String ROLE_ADMIN = "ADMIN";
     public static final String ROLE_USER = "USER";
 
-
-    public static final String  OPEN_MESSAGE = "OUVRIR";
-    public static final String  CLOSED_MESSAGE = "FERMÉ";
-
-    // Contact Status
+    public static final String OPEN_MESSAGE = "OPEN";
+    public static final String CLOSED_MESSAGE = "CLOSED";
     public static final String IN_PROGRESS_MESSAGE = "IN_PROGRESS";
-
 }
-

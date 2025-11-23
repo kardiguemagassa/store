@@ -69,10 +69,21 @@ public class ProductServiceImpl implements IProductService {
         }
     }
 
-
     private Specification<Product> buildSpecification(ProductSearchCriteria criteria) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+
+            //  Gérer les 3 cas pour activeOnly
+            if (criteria.activeOnly() != null) {
+                if (Boolean.TRUE.equals(criteria.activeOnly())) {
+                    // Seulement les produits actifs
+                    predicates.add(cb.isTrue(root.get("isActive")));
+                } else if (Boolean.FALSE.equals(criteria.activeOnly())) {
+                    // Seulement les produits inactifs
+                    predicates.add(cb.isFalse(root.get("isActive")));
+                }
+                // Si activeOnly est null, on ne filtre pas (tous les produits)
+            }
 
             // Filtre par statut actif
             if (Boolean.TRUE.equals(criteria.activeOnly())) {predicates.add(cb.isTrue(root.get("isActive")));}
@@ -381,8 +392,8 @@ public class ProductServiceImpl implements IProductService {
             validateProductId(productId);
 
             Product product = getProductEntityById(productId);
-            //String imageUrl = fileStorageService.storeProductImage(imageFile);
-            String imageUrl = fileStorageService.storeGalleryImage(imageFile);
+            String imageUrl = fileStorageService.storeProductImage(imageFile);
+            //String imageUrl = fileStorageService.storeGalleryImage(imageFile);
             deleteProductImage(product);
 
             product.setImageUrl(imageUrl);
@@ -480,8 +491,8 @@ public class ProductServiceImpl implements IProductService {
             List<String> imageUrls = new ArrayList<>();
 
             for (MultipartFile imageFile : imageFiles) {
-                //String imageUrl = fileStorageService.storeProductImage(imageFile);
-                String imageUrl = fileStorageService.storeGalleryImage(imageFile);
+                String imageUrl = fileStorageService.storeProductImage(imageFile);
+                //String imageUrl = fileStorageService.storeGalleryImage(imageFile);
                 imageUrls.add(imageUrl);
             }
 
@@ -655,6 +666,9 @@ public class ProductServiceImpl implements IProductService {
         if (productDto.getCategoryId() == null) {
             throw exceptionFactory.validationError("categoryId", messageService.getMessage("validation.product.categoryId.required"));
         }
+        if (productDto.getSku() == null || productDto.getSku().trim().isEmpty()) {
+            throw exceptionFactory.validationError("sku", messageService.getMessage("validation.product.sku.required"));
+        }
         if (productDto.getName().length() > 250) {
             throw exceptionFactory.validationError("name", messageService.getMessage("validation.product.name.tooLong", 250));
         }
@@ -687,6 +701,7 @@ public class ProductServiceImpl implements IProductService {
         product.setPopularity(0);
         product.setImageUrl(productDto.getImageUrl());
         product.setCategory(category);
+        product.setSku(productDto.getSku());
         return product;
     }
 
@@ -698,6 +713,7 @@ public class ProductServiceImpl implements IProductService {
         productDto.setPrice(product.getPrice());
         productDto.setPopularity(product.getPopularity());
         productDto.setStockQuantity(product.getStockQuantity());
+        productDto.setSku(product.getSku());
         productDto.setImageUrl(product.getImageUrl());
         productDto.setIsActive(product.getIsActive());
         productDto.setGalleryImages(product.getGalleryImages());

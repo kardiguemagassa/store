@@ -79,7 +79,7 @@ public record OrderValidationResultDto(
     public boolean isOnlyTotalDiscrepancy() {
         return !isValid &&
                 hasDiscrepancy() &&
-                (errors == null || errors.size() == 1 && errors.get(0).contains("total"));
+                (errors == null || errors.size() == 1 && errors.getFirst().contains("total"));
     }
 
 
@@ -103,7 +103,7 @@ public record OrderValidationResultDto(
                 List.of(),
                 calculatedTotal,
                 expectedTotal,
-                true
+                Boolean.TRUE
         );
     }
 
@@ -141,11 +141,12 @@ public record OrderValidationResultDto(
         );
     }
 
-    private static boolean calculateTotalsMatch(BigDecimal calculatedTotal, BigDecimal expectedTotal) {
+    // CORRECTION: Modifier le type de retour de la méthode
+    private static Boolean calculateTotalsMatch(BigDecimal calculatedTotal, BigDecimal expectedTotal) {
         if (calculatedTotal == null || expectedTotal == null) {
-            return false;
+            return Boolean.FALSE;
         }
-        return calculatedTotal.compareTo(expectedTotal) == 0;
+        return Boolean.valueOf(calculatedTotal.compareTo(expectedTotal) == 0);
     }
 
     public String getSummary() {

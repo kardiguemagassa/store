@@ -29,11 +29,19 @@ public class ProductDto {
     @Min(value = 0, message = "{validation.min.value}")
     private Integer popularity;
 
+    @NotBlank(message = "{validation.required}")
+    @Size(max = 50, message = "{validation.size.max}")
+    private String sku;
+
+
     @Size(max = 10, message = "{validation.product.gallery.size}")
     private List<String> galleryImages = new ArrayList<>();
 
     @Size(max = 500, message = "{validation.size.max}")
-    @Pattern(regexp = "^(https?://.*|/images/.*)$", message = "{validation.product.imageUrl.pattern}")
+    @Pattern(
+            regexp = "^.*$", // Accepte tout
+            message = "{validation.product.imageUrl.pattern}"
+    )
     private String imageUrl;
 
     private Boolean isActive = true;

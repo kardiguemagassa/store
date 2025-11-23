@@ -3,12 +3,13 @@ package com.store.store.repository;
 import com.store.store.entity.Customer;
 import com.store.store.entity.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
-public interface OrderRepository extends JpaRepository<Order, Long> {
+public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecificationExecutor<Order> {
 
     /**
      * Fetch orders for a customer, sorted by creation date in descending order.
@@ -39,7 +40,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                           @Param("updatedBy") String updatedBy);*/
 
 
-    /*// SOLUTION : Supprimez CURRENT_TIMESTAMP de la requête
+    /*// Supprimer CURRENT_TIMESTAMP de la requête
     @Transactional
     @Modifying
     @Query("UPDATE Order o SET o.orderStatus = :orderStatus, o.updatedBy = :updatedBy WHERE o.orderId = :orderId")

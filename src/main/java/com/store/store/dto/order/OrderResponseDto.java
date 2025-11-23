@@ -38,6 +38,13 @@ public class OrderResponseDto {
     @Schema(description = "Date de dernière modification", example = "2025-10-24T15:45:00")
     private LocalDateTime updatedAt;
 
+    // AJOUT: Informations client
+    @Schema(description = "Email du client", example = "client@example.com")
+    private String customerEmail;
+
+    @Schema(description = "Nom du client", example = "John Doe")
+    private String customerName;
+
     @Schema(description = "Articles de la commande")
     private List<OrderItemResponseDto> items;
 
@@ -74,9 +81,10 @@ public class OrderResponseDto {
         return !isCancelled() && !isDelivered() && !isPaid();
     }
 
-    // Factory method pour création standardisée
+    // Factory method avec informations client
     public static OrderResponseDto of(Long orderId, String orderStatus, BigDecimal totalPrice,
                                       String paymentIntentId, String paymentStatus,
+                                      String customerEmail, String customerName,
                                       List<OrderItemResponseDto> items) {
         return OrderResponseDto.builder()
                 .orderId(orderId)
@@ -84,21 +92,26 @@ public class OrderResponseDto {
                 .totalPrice(totalPrice)
                 .paymentIntentId(paymentIntentId)
                 .paymentStatus(paymentStatus)
+                .customerEmail(customerEmail)
+                .customerName(customerName)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .items(items)
                 .build();
     }
 
-    // Factory method pour commande créée
+    // Factory method pour commande créée avec client
     public static OrderResponseDto created(Long orderId, BigDecimal totalPrice,
-                                           String paymentIntentId, List<OrderItemResponseDto> items) {
+                                           String paymentIntentId, String customerEmail, String customerName,
+                                           List<OrderItemResponseDto> items) {
         return OrderResponseDto.builder()
                 .orderId(orderId)
                 .orderStatus("CREATED")
                 .totalPrice(totalPrice)
                 .paymentIntentId(paymentIntentId)
                 .paymentStatus("pending")
+                .customerEmail(customerEmail)
+                .customerName(customerName)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .items(items)
@@ -128,5 +141,17 @@ public class OrderResponseDto {
             case "failed" -> "Échoué";
             default -> paymentStatus;
         };
+    }
+
+    // obtenir l'affichage client
+    public String getCustomerDisplay() {
+        if (customerName != null && customerEmail != null) {
+            return customerName + " (" + customerEmail + ")";
+        } else if (customerEmail != null) {
+            return customerEmail;
+        } else if (customerName != null) {
+            return customerName;
+        }
+        return "Client inconnu";
     }
 }

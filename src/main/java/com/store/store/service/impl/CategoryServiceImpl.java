@@ -41,7 +41,6 @@ public class CategoryServiceImpl implements ICategoryService {
     private final MessageServiceImpl messageService;
 
     // LECTURE (READ)
-
     @Override
     public List<CategoryDto> getAllActiveCategories() {
         try {
@@ -59,7 +58,6 @@ public class CategoryServiceImpl implements ICategoryService {
             throw exceptionFactory.businessError(messageService.getMessage("error.category.fetch.failed"));
         }
     }
-
 
     @Override
     public List<CategoryDto> getAllCategories() {
@@ -97,7 +95,6 @@ public class CategoryServiceImpl implements ICategoryService {
             throw exceptionFactory.businessError(messageService.getMessage("error.category.fetch.byCode.failed", code));
         }
     }
-
 
     @Override
     public CategoryDto getCategoryById(Long id) {
@@ -137,7 +134,6 @@ public class CategoryServiceImpl implements ICategoryService {
     }
 
     // CRÉATION (CREATE)
-
     @Transactional
     @Override
     public CategoryDto createCategory(CategoryDto dto) {
@@ -176,7 +172,6 @@ public class CategoryServiceImpl implements ICategoryService {
     }
 
     // MISE À JOUR (UPDATE)
-
     @Transactional
     @Override
     public CategoryDto updateCategory(Long id, CategoryDto dto) {
@@ -250,7 +245,6 @@ public class CategoryServiceImpl implements ICategoryService {
     }
 
     // SUPPRESSION (DELETE)
-
     @Transactional
     @Override
     public void deleteCategory(Long id) {
@@ -283,7 +277,6 @@ public class CategoryServiceImpl implements ICategoryService {
     }
 
     // UPLOAD D'ICÔNE
-
     @Transactional
     @Override
     public String uploadCategoryIcon(Long categoryId, MultipartFile iconFile) {
@@ -321,7 +314,6 @@ public class CategoryServiceImpl implements ICategoryService {
     }
 
     // VALIDATION
-
     private void validateCategoryId(Long id) {
         if (id == null || id <= 0) {
             throw exceptionFactory.validationError("categoryId", messageService.getMessage("validation.category.id.invalid"));
@@ -381,7 +373,6 @@ public class CategoryServiceImpl implements ICategoryService {
     }
 
     // MÉTHODES UTILITAIRES
-
     private String generateUniqueIconFileName(String originalFileName) {
         String timestamp = String.valueOf(System.currentTimeMillis());
         String fileExtension = originalFileName != null ? originalFileName.substring(originalFileName.lastIndexOf(".")) : ".png";

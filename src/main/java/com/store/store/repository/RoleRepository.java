@@ -15,7 +15,7 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
         // ROLE_USER -> CACHE HIT -> Customer 2
         // ROLE_ADMIN -> CACHE MISS -> DB call -> Cache Store (ROLE_ADMIN -> Role record) -> Customer X
     Optional<Role> findByName(RoleType name);
-
     List<Role> findAllByIsActiveTrue();
+
     boolean existsByName(RoleType name);
 }
